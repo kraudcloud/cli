@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ func feeds() *cobra.Command {
 	}
 
 	c.AddCommand(feedsLs())
+	c.AddCommand(feedCreate())
 
 	return c
 }
@@ -67,6 +69,72 @@ func feedsLs() *cobra.Command {
 			}
 		},
 	}
+
+	return c
+}
+
+func feedCreate() *cobra.Command {
+	iconURL := ""
+
+	c := &cobra.Command{
+		Use:     "create",
+		Aliases: []string{"new"},
+		Short:   "Create feed",
+		Args:    cobra.ExactArgs(1),
+		Run: func(_ *cobra.Command, args []string) {
+			client := authClient()
+
+			name := args[0]
+
+			b := struct {
+				Name    string `json:"name"`
+				IconURL string `json:"icon_url"`
+			}{
+				Name:    name,
+				IconURL: iconURL,
+			}
+
+			buf := &bytes.Buffer{}
+			json.NewEncoder(buf).Encode(b)
+
+			req, err := http.NewRequest(
+				"POST",
+				fmt.Sprintf("%s/apis/kraudcloud.com/v1/feeds", endpoint),
+				buf,
+			)
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			req.Header.Add("Content-Type", "application/json")
+
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			defer resp.Body.Close()
+
+			if resp.StatusCode > 201 {
+				log.Warnln(resp.Status)
+				var e errResp
+				json.NewDecoder(resp.Body).Decode(&e)
+				log.WithField("error", e.Error).WithField("message", e.Message).Fatalln("Error creating feed")
+				os.Exit(resp.StatusCode)
+			}
+
+			switch format {
+			case "table":
+				content, _ := io.ReadAll(resp.Body)
+				t, _ := TableFromJSON(content)
+				t.Render()
+			default:
+				io.Copy(os.Stdout, resp.Body)
+			}
+		},
+	}
+
+	c.Flags().StringVar(&iconURL, "icon", "https://avatars.githubusercontent.com/u/97388814", "Icon URL")
 
 	return c
 }
