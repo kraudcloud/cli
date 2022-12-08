@@ -53,7 +53,18 @@ func feedsLs() *cobra.Command {
 				os.Exit(resp.StatusCode)
 			}
 
-			io.Copy(os.Stdout, resp.Body)
+			encoded, _ := io.ReadAll(resp.Body)
+
+			switch format {
+			case "table":
+				t, err := TableFromJSON(encoded)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				t.Render()
+			default:
+				os.Stdout.Write(encoded)
+			}
 		},
 	}
 

@@ -4,9 +4,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/olekukonko/tablewriter"
+	"golang.org/x/exp/maps"
 )
 
 func getConfigDir() string {
@@ -72,4 +77,41 @@ func authClient() *http.Client {
 			},
 		},
 	}
+}
+
+func TableFromJSON(data []byte) (*tablewriter.Table, error) {
+	var m []map[string]interface{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, err
+	}
+
+	if len(m) == 0 {
+		return nil, fmt.Errorf("no data")
+	}
+
+	t := tablewriter.NewWriter(os.Stdout)
+	t.SetBorder(false)
+	t.SetHeaderLine(false)
+	t.SetColumnSeparator("|")
+	t.SetCenterSeparator(" ")
+	t.SetAutoWrapText(false)
+
+	keys := maps.Keys(m[0])
+	t.SetHeader(keys)
+
+	for _, v := range m {
+		var row []string
+		for _, k := range keys {
+			s := fmt.Sprintf("%v", v[k])
+			s = strings.ReplaceAll(s, "\n", " ")
+			if len(s) > 36 {
+				s = s[:33] + "..."
+			}
+
+			row = append(row, s)
+		}
+		t.Append(row)
+	}
+
+	return t, nil
 }

@@ -59,7 +59,24 @@ func appsLs() *cobra.Command {
 				os.Exit(resp.StatusCode)
 			}
 
-			io.Copy(os.Stdout, resp.Body)
+			partial := struct {
+				Apps []any `json:"apps"`
+			}{}
+
+			json.NewDecoder(resp.Body).Decode(&partial)
+
+			encoded, _ := json.Marshal(partial.Apps)
+
+			switch format {
+			case "table":
+				t, err := TableFromJSON(encoded)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				t.Render()
+			default:
+				os.Stdout.Write(encoded)
+			}
 		},
 	}
 

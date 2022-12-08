@@ -10,6 +10,7 @@ import (
 var log = logrus.New()
 var configDir = ""
 var endpoint = "https://k8s.m.kraudcloud.com"
+var format = "table"
 
 func main() {
 	configDir = getConfigDir()
@@ -27,6 +28,7 @@ func main() {
 
 	root.AddCommand(apps())
 	root.AddCommand(feeds())
+	root.PersistentFlags().StringVar(&format, "format", "table", "Output format (table, json)")
 
 	if err := root.Execute(); err != nil {
 		log.Fatalln(err)
