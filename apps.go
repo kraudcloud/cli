@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 
@@ -89,6 +90,7 @@ func appsLs() *cobra.Command {
 func appsPush() *cobra.Command {
 	feed := ""
 
+	changelog := ""
 	c := &cobra.Command{
 		Use:     "push",
 		Short:   "Push an app to the kraud server",
@@ -97,7 +99,33 @@ func appsPush() *cobra.Command {
 		Run: func(_ *cobra.Command, args []string) {
 			client := authClient()
 
-			b, err := os.ReadFile(args[0])
+			buf := &bytes.Buffer{}
+
+			body := multipart.NewWriter(buf)
+			file, err := body.CreateFormFile("template", "template.yaml")
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			f, err := os.Open(args[0])
+			if err != nil {
+				log.Fatalln(err)
+			}
+			defer f.Close()
+
+			_, err = io.Copy(file, f)
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			if changelog != "" {
+				err = body.WriteField("changelog", changelog)
+				if err != nil {
+					log.Fatalln(err)
+				}
+			}
+
+			err = body.Close()
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -105,13 +133,13 @@ func appsPush() *cobra.Command {
 			req, err := http.NewRequest(
 				"PUT",
 				fmt.Sprintf("%s/apis/kraudcloud.com/v1/feeds/%s/app", endpoint, feed),
-				bytes.NewBuffer(b),
+				buf,
 			)
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			req.Header.Set("Content-Type", "application/yaml")
+			req.Header.Set("Content-Type", body.FormDataContentType())
 
 			resp, err := client.Do(req)
 			if err != nil {
@@ -131,6 +159,7 @@ func appsPush() *cobra.Command {
 	}
 
 	c.Flags().StringVarP(&feed, "feed", "f", "", "store to push to")
+	c.Flags().StringVarP(&changelog, "changelog", "c", "", "changelog for the app")
 	c.MarkFlagRequired("feed")
 
 	return c

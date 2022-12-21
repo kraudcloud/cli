@@ -28,9 +28,8 @@ func main() {
 
 	root.AddCommand(apps())
 	root.AddCommand(feeds())
+	root.AddCommand(certs())
 	root.PersistentFlags().StringVar(&format, "format", "table", "Output format (table, json)")
 
-	if err := root.Execute(); err != nil {
-		log.Fatalln(err)
-	}
+	root.Execute()
 }
