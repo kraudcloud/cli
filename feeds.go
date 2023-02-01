@@ -123,18 +123,12 @@ func feedCreate() *cobra.Command {
 				os.Exit(resp.StatusCode)
 			}
 
-			switch format {
-			case "table":
-				content, _ := io.ReadAll(resp.Body)
-				t, _ := TableFromJSON(content)
-				t.Render()
-			default:
-				io.Copy(os.Stdout, resp.Body)
-			}
+			io.Copy(os.Stdout, resp.Body)
 		},
 	}
 
 	c.Flags().StringVar(&iconURL, "icon", "https://avatars.githubusercontent.com/u/97388814", "Icon URL")
+	c.MarkFlagRequired("icon")
 
 	return c
 }
