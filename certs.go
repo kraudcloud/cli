@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -27,17 +26,15 @@ func certs() *cobra.Command {
 func certsGenerate() *cobra.Command {
 	namespace := "default"
 	dns := []string{}
+	format  := "table"
 
 	c := &cobra.Command{
 		Use:   "generate",
 		Short: "Generate a certificate",
 		Args:  cobra.ExactArgs(1),
 		Run: func(_ *cobra.Command, args []string) {
-			client := authClient()
 
 			u := url.URL{
-				Scheme: "https",
-				Host:   strings.TrimPrefix(endpoint, "https://"),
 				Path:   fmt.Sprintf("/apis/certificates.kraudcloud.com/v1/%s/generate/%s", url.PathEscape(namespace), url.PathEscape(args[0])),
 				RawQuery: url.Values{
 					"dns": dns,
@@ -59,7 +56,7 @@ func certsGenerate() *cobra.Command {
 
 			req.Header.Set("Content-Type", "application/json")
 
-			resp, err := client.Do(req)
+			resp, err := Do(req)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -80,6 +77,7 @@ func certsGenerate() *cobra.Command {
 
 	c.Flags().StringVarP(&namespace, "namespace", "n", namespace, "Namespace to create the certificate in")
 	c.Flags().StringSliceVar(&dns, "dns", []string{}, "dns to add to the certificate")
+	c.Flags().StringVarP(&format, "output", "o", "table", "output format (table|json)")
 
 	return c
 }

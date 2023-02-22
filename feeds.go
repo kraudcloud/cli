@@ -13,7 +13,7 @@ import (
 
 func feeds() *cobra.Command {
 	c := &cobra.Command{
-		Use:     "feed",
+		Use:     "feeds",
 		Aliases: []string{"feeds"},
 		Short:   "Manage feeds",
 	}
@@ -25,22 +25,31 @@ func feeds() *cobra.Command {
 }
 
 func feedsLs() *cobra.Command {
+
+	var format string
+
 	c := &cobra.Command{
 		Use:   "ls",
 		Short: "List feeds",
 		Run: func(_ *cobra.Command, _ []string) {
-			client := authClient()
 
 			req, err := http.NewRequest(
 				"GET",
-				fmt.Sprintf("%s/apis/kraudcloud.com/v1/feeds", endpoint),
+				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds"),
 				nil,
 			)
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			resp, err := client.Do(req)
+			switch format {
+			case "table":
+				req.Header.Set("Accept", "application/json;as=Table")
+			default:
+				req.Header.Set("Accept", "application/json")
+			}
+
+			resp, err := Do(req)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -58,23 +67,19 @@ func feedsLs() *cobra.Command {
 			encoded, _ := io.ReadAll(resp.Body)
 
 			switch format {
-			case "table":
-				t, err := TableFromJSON(encoded)
-				if err != nil {
-					log.Fatalln(err)
-				}
-				t.Render()
 			default:
 				os.Stdout.Write(encoded)
 			}
 		},
 	}
+	c.Flags().StringVarP(&format, "output", "o", "table", "output format (table|json)")
 
 	return c
 }
 
 func feedCreate() *cobra.Command {
 	iconURL := ""
+	format := "table"
 
 	c := &cobra.Command{
 		Use:     "create",
@@ -82,7 +87,6 @@ func feedCreate() *cobra.Command {
 		Short:   "Create feed",
 		Args:    cobra.ExactArgs(1),
 		Run: func(_ *cobra.Command, args []string) {
-			client := authClient()
 
 			name := args[0]
 
@@ -99,7 +103,7 @@ func feedCreate() *cobra.Command {
 
 			req, err := http.NewRequest(
 				"POST",
-				fmt.Sprintf("%s/apis/kraudcloud.com/v1/feeds", endpoint),
+				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds"),
 				buf,
 			)
 			if err != nil {
@@ -108,7 +112,14 @@ func feedCreate() *cobra.Command {
 
 			req.Header.Add("Content-Type", "application/json")
 
-			resp, err := client.Do(req)
+			switch format {
+			case "table":
+				req.Header.Set("Accept", "application/json;as=Table")
+			default:
+				req.Header.Set("Accept", "application/json")
+			}
+
+			resp, err := Do(req)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -123,12 +134,16 @@ func feedCreate() *cobra.Command {
 				os.Exit(resp.StatusCode)
 			}
 
-			io.Copy(os.Stdout, resp.Body)
+			switch format {
+			default:
+				io.Copy(os.Stdout, resp.Body)
+			}
 		},
 	}
 
 	c.Flags().StringVar(&iconURL, "icon", "https://avatars.githubusercontent.com/u/97388814", "Icon URL")
 	c.MarkFlagRequired("icon")
+	c.Flags().StringVarP(&format, "output", "o", "table", "output format (table|json)")
 
 	return c
 }

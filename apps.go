@@ -14,7 +14,7 @@ import (
 
 func apps() *cobra.Command {
 	c := &cobra.Command{
-		Use:     "app",
+		Use:     "apps",
 		Aliases: []string{"apps"},
 		Short:   "Manage apps",
 	}
@@ -27,25 +27,33 @@ func apps() *cobra.Command {
 }
 
 func appsLs() *cobra.Command {
-	feed := ""
+
+	format  := "table"
+	feed	:= ""
 
 	c := &cobra.Command{
 		Use:     "ls",
 		Short:   "List apps",
 		Aliases: []string{"l"},
 		Run: func(_ *cobra.Command, _ []string) {
-			client := authClient()
 
 			req, err := http.NewRequest(
 				"GET",
-				fmt.Sprintf("%s/apis/kraudcloud.com/v1/feeds/%s/apps", endpoint, feed),
+				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/apps", feed),
 				nil,
 			)
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			resp, err := client.Do(req)
+			switch format {
+			case "table":
+				req.Header.Set("Accept", "application/json;as=Table")
+			default:
+				req.Header.Set("Accept", "application/json")
+			}
+
+			resp, err := Do(req)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -69,12 +77,6 @@ func appsLs() *cobra.Command {
 			encoded, _ := json.Marshal(partial.Apps)
 
 			switch format {
-			case "table":
-				t, err := TableFromJSON(encoded)
-				if err != nil {
-					log.Fatalln(err)
-				}
-				t.Render()
 			default:
 				os.Stdout.Write(encoded)
 			}
@@ -82,6 +84,7 @@ func appsLs() *cobra.Command {
 	}
 
 	c.Flags().StringVarP(&feed, "feed", "f", "", "store to push to")
+	c.Flags().StringVarP(&format, "output", "o", "table", "output format (table|json)")
 	c.MarkFlagRequired("feed")
 
 	return c
@@ -92,12 +95,11 @@ func appsPush() *cobra.Command {
 
 	changelog := ""
 	c := &cobra.Command{
-		Use:     "push",
+		Use:     "push <app.yaml>",
 		Short:   "Push an app to the kraud server",
 		Aliases: []string{"p"},
 		Args:    cobra.ExactArgs(1),
 		Run: func(_ *cobra.Command, args []string) {
-			client := authClient()
 
 			buf := &bytes.Buffer{}
 
@@ -132,7 +134,7 @@ func appsPush() *cobra.Command {
 
 			req, err := http.NewRequest(
 				"PUT",
-				fmt.Sprintf("%s/apis/kraudcloud.com/v1/feeds/%s/app", endpoint, feed),
+				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/app", feed),
 				buf,
 			)
 			if err != nil {
@@ -141,7 +143,7 @@ func appsPush() *cobra.Command {
 
 			req.Header.Set("Content-Type", body.FormDataContentType())
 
-			resp, err := client.Do(req)
+			resp, err := Do(req)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -174,18 +176,17 @@ func appsInspect() *cobra.Command {
 		Aliases: []string{"i"},
 		Args:    cobra.ExactArgs(1),
 		Run: func(_ *cobra.Command, args []string) {
-			client := authClient()
 
 			req, err := http.NewRequest(
 				"GET",
-				fmt.Sprintf("%s/apis/kraudcloud.com/v1/feeds/%s/apps/%s/template", endpoint, feed, args[0]),
+				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/apps/%s/template", feed, args[0]),
 				nil,
 			)
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			resp, err := client.Do(req)
+			resp, err := Do(req)
 			if err != nil {
 				log.Fatalln(err)
 			}
