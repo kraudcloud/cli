@@ -28,8 +28,8 @@ func apps() *cobra.Command {
 
 func appsLs() *cobra.Command {
 
-	format  := "table"
-	feed	:= ""
+	format := "table"
+	feed := ""
 
 	c := &cobra.Command{
 		Use:     "ls",
@@ -46,40 +46,18 @@ func appsLs() *cobra.Command {
 				log.Fatalln(err)
 			}
 
-			switch format {
-			case "table":
-				req.Header.Set("Accept", "application/json;as=Table")
-			default:
-				req.Header.Set("Accept", "application/json")
-			}
-
-			resp, err := Do(req)
-			if err != nil {
-				log.Fatalln(err)
-			}
-
-			defer resp.Body.Close()
-
-			if resp.StatusCode > 201 {
-				log.Warnln(resp.Status)
-				var e errResp
-				json.NewDecoder(resp.Body).Decode(&e)
-				log.WithField("error", e.Error).WithField("message", e.Message).Fatalln("Error listing apps")
-				os.Exit(resp.StatusCode)
-			}
-
 			partial := struct {
 				Apps []any `json:"apps"`
 			}{}
 
-			json.NewDecoder(resp.Body).Decode(&partial)
-
-			encoded, _ := json.Marshal(partial.Apps)
-
-			switch format {
-			default:
-				os.Stdout.Write(encoded)
+			err = API().Do(req, &partial)
+			if err != nil {
+				log.Fatalln(err)
 			}
+
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			err = enc.Encode(partial)
 		},
 	}
 
@@ -96,7 +74,7 @@ func appsPush() *cobra.Command {
 	changelog := ""
 	c := &cobra.Command{
 		Use:     "push <app.yaml>",
-		Short:   "Push an app to the kraud server",
+		Short:   "Push an app to the kraud",
 		Aliases: []string{"p"},
 		Args:    cobra.ExactArgs(1),
 		Run: func(_ *cobra.Command, args []string) {
@@ -143,20 +121,11 @@ func appsPush() *cobra.Command {
 
 			req.Header.Set("Content-Type", body.FormDataContentType())
 
-			resp, err := Do(req)
+			err = API().Do(req, nil)
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			defer resp.Body.Close()
-
-			if resp.StatusCode > 201 {
-				log.Warnln(resp.Status)
-				var e errResp
-				json.NewDecoder(resp.Body).Decode(&e)
-				log.WithField("error", e.Error).WithField("message", e.Message).Fatalln("Error pushing app")
-				os.Exit(resp.StatusCode)
-			}
 		},
 	}
 
@@ -186,22 +155,15 @@ func appsInspect() *cobra.Command {
 				log.Fatalln(err)
 			}
 
-			resp, err := Do(req)
+			var resp = map[string]interface{}{}
+
+			err = API().Do(req, &resp)
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			defer resp.Body.Close()
+			json.NewEncoder(os.Stdout).Encode(resp)
 
-			if resp.StatusCode > 201 {
-				log.Warnln(resp.Status)
-				var e errResp
-				json.NewDecoder(resp.Body).Decode(&e)
-				log.WithField("error", e.Error).WithField("message", e.Message).Fatalln("Error inspecting app")
-				os.Exit(resp.StatusCode)
-			}
-
-			io.Copy(os.Stdout, resp.Body)
 		},
 	}
 

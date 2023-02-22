@@ -7,8 +7,6 @@ import (
 
 var log = logrus.New()
 
-var outputFormat string
-
 func main() {
 
 	root := cobra.Command{
@@ -16,9 +14,8 @@ func main() {
 		Short: "kraud api command line interface",
 	}
 
-	root.AddCommand(apps())
 	root.AddCommand(feeds())
-	root.AddCommand(certs())
+	root.AddCommand(apps())
 
 	root.Execute()
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 
@@ -14,7 +13,7 @@ import (
 func feeds() *cobra.Command {
 	c := &cobra.Command{
 		Use:     "feeds",
-		Aliases: []string{"feeds"},
+		Aliases: []string{"feed"},
 		Short:   "Manage feeds",
 	}
 
@@ -26,60 +25,33 @@ func feeds() *cobra.Command {
 
 func feedsLs() *cobra.Command {
 
-	var format string
-
 	c := &cobra.Command{
 		Use:   "ls",
 		Short: "List feeds",
-		Run: func(_ *cobra.Command, _ []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 
-			req, err := http.NewRequest(
-				"GET",
-				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds"),
-				nil,
-			)
+			feeds, err := API().ListFeeds(cmd.Context())
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			switch format {
-			case "table":
-				req.Header.Set("Accept", "application/json;as=Table")
-			default:
-				req.Header.Set("Accept", "application/json")
+			table := NewTable("ID", "Name")
+			for _, feed := range feeds {
+				table.AddRow(
+					feed.ID,
+					feed.Name,
+				)
 			}
+			table.Print()
 
-			resp, err := Do(req)
-			if err != nil {
-				log.Fatalln(err)
-			}
-
-			defer resp.Body.Close()
-
-			if resp.StatusCode > 201 {
-				log.Warnln(resp.Status)
-				var e errResp
-				json.NewDecoder(resp.Body).Decode(&e)
-				log.WithField("error", e.Error).WithField("message", e.Message).Fatalln("Error listing feeds")
-				os.Exit(resp.StatusCode)
-			}
-
-			encoded, _ := io.ReadAll(resp.Body)
-
-			switch format {
-			default:
-				os.Stdout.Write(encoded)
-			}
 		},
 	}
-	c.Flags().StringVarP(&format, "output", "o", "table", "output format (table|json)")
 
 	return c
 }
 
 func feedCreate() *cobra.Command {
 	iconURL := ""
-	format := "table"
 
 	c := &cobra.Command{
 		Use:     "create",
@@ -112,38 +84,20 @@ func feedCreate() *cobra.Command {
 
 			req.Header.Add("Content-Type", "application/json")
 
-			switch format {
-			case "table":
-				req.Header.Set("Accept", "application/json;as=Table")
-			default:
-				req.Header.Set("Accept", "application/json")
-			}
+			var rsp map[string]interface{}
 
-			resp, err := Do(req)
+			err = API().Do(req, &rsp)
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			defer resp.Body.Close()
+			json.NewEncoder(os.Stdout).Encode(rsp)
 
-			if resp.StatusCode > 201 {
-				log.Warnln(resp.Status)
-				var e errResp
-				json.NewDecoder(resp.Body).Decode(&e)
-				log.WithField("error", e.Error).WithField("message", e.Message).Fatalln("Error creating feed")
-				os.Exit(resp.StatusCode)
-			}
-
-			switch format {
-			default:
-				io.Copy(os.Stdout, resp.Body)
-			}
 		},
 	}
 
 	c.Flags().StringVar(&iconURL, "icon", "https://avatars.githubusercontent.com/u/97388814", "Icon URL")
 	c.MarkFlagRequired("icon")
-	c.Flags().StringVarP(&format, "output", "o", "table", "output format (table|json)")
 
 	return c
 }
