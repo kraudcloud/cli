@@ -16,6 +16,7 @@ func main() {
 
 	root.AddCommand(feeds())
 	root.AddCommand(apps())
+	root.AddCommand(auth())
 
 	root.Execute()
 }
