@@ -13,10 +13,6 @@ import (
 	"github.com/go-chi/render"
 )
 
-const (
-	BearerAuthScopes = "bearerAuth.Scopes"
-)
-
 // Defines values for ContainerStateStatus.
 var (
 	UnknownContainerStateStatus = ContainerStateStatus{}
@@ -1475,6 +1471,63 @@ type KraudCertificateGenerateResponse struct {
 	Ca   string `json:"ca"`
 	Cert string `json:"cert"`
 	Key  string `json:"key"`
+}
+
+// KraudCreateImageResponse defines model for Kraud.CreateImageResponse.
+type KraudCreateImageResponse struct {
+	// Image is a named docker image
+	Created *KraudImageName  `json:"created,omitempty"`
+	Renamed []KraudImageName `json:"renamed,omitempty"`
+}
+
+// Image is a docker image for a specific architecture
+type KraudImage struct {
+	Config map[string]interface{} `json:"Config"`
+	ID     string                 `json:"ID"`
+	Layers []KraudLayerReference  `json:"Layers"`
+	OciID  string                 `json:"OciID"`
+	Size   uint64                 `json:"Size"`
+}
+
+// Image is a named docker image
+type KraudImageName struct {
+	AID string `json:"AID"`
+
+	// Image is a docker image for a specific architecture
+	Amd64 *KraudImage `json:"Amd64,omitempty"`
+	ID    string      `json:"ID"`
+	Ref   string      `json:"Ref"`
+}
+
+// KraudImageNameList defines model for Kraud.ImageNameList.
+type KraudImageNameList struct {
+	Items []KraudImageName `json:"items"`
+}
+
+// Layer is a docker image layer
+type KraudLayer struct {
+	ID       string `json:"ID"`
+	OciID    string `json:"OciID"`
+	Refcount int    `json:"refcount"`
+	Sha256   string `json:"sha256"`
+	Size     uint64 `json:"size"`
+}
+
+// KraudLayerList defines model for Kraud.LayerList.
+type KraudLayerList struct {
+	Items []KraudLayer `json:"items"`
+}
+
+// KraudLayerReference defines model for Kraud.LayerReference.
+type KraudLayerReference struct {
+	ID    *string `json:"ID,omitempty"`
+	OciID *string `json:"OciID,omitempty"`
+}
+
+// KraudTenantInfo defines model for Kraud.TenantInfo.
+type KraudTenantInfo struct {
+	ID  string `json:"id"`
+	Org string `json:"org"`
 }
 
 // An object describing a limit on resources which can be requested by a task.
@@ -4304,37 +4357,6 @@ type K8sEventList struct {
 	Metadata *IoK8sApimachineryPkgApisMetaV1ListMeta `json:"metadata,omitempty"`
 }
 
-// Image is a docker image
-type K8sImage struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
-
-	// ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.
-	Metadata IoK8sApimachineryPkgApisMetaV1ObjectMeta `json:"metadata"`
-	Spec     *K8sImageSpec                            `json:"spec,omitempty"`
-	Status   *K8sImageStatus                          `json:"status,omitempty"`
-}
-
-// ImageList is a list of Images.
-type K8sImageList struct {
-	APIVersion string     `json:"apiVersion"`
-	Items      []K8sImage `json:"items"`
-	Kind       string     `json:"kind"`
-
-	// ListMeta describes metadata that synthetic resources must have, including lists and various status objects. A resource may have only one of {ObjectMeta, ListMeta}.
-	Metadata IoK8sApimachineryPkgApisMetaV1ListMeta `json:"metadata"`
-}
-
-// K8sImageSpec defines model for k8s.ImageSpec.
-type K8sImageSpec struct {
-	Ref string `json:"ref"`
-}
-
-// K8sImageStatus defines model for k8s.ImageStatus.
-type K8sImageStatus struct {
-	Size int `json:"size"`
-}
-
 // K8sIngress defines model for k8s.Ingress.
 type K8sIngress struct {
 	APIVersion string `json:"apiVersion"`
@@ -4928,6 +4950,7 @@ type K8sUser struct {
 	// ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.
 	Metadata *IoK8sApimachineryPkgApisMetaV1ObjectMeta `json:"metadata,omitempty"`
 	Spec     *K8sUserSpec                              `json:"spec,omitempty"`
+	Tenant   *KraudTenantInfo                          `json:"tenant,omitempty"`
 }
 
 // K8sUserList defines model for k8s.UserList.
@@ -6350,12 +6373,6 @@ type ListEndpointsAllNamespacesParams struct {
 	LabelSelector *string `json:"labelSelector,omitempty"`
 }
 
-// ListImagesParams defines parameters for ListImages.
-type ListImagesParams struct {
-	FieldSelector *string `json:"fieldSelector,omitempty"`
-	LabelSelector *string `json:"labelSelector,omitempty"`
-}
-
 // ListNamespacesParams defines parameters for ListNamespaces.
 type ListNamespacesParams struct {
 	FieldSelector *string `json:"fieldSelector,omitempty"`
@@ -6489,6 +6506,27 @@ type GetFeedAppTemplateParams struct {
 // GetFeedAppVersionsParams defines parameters for GetFeedAppVersions.
 type GetFeedAppVersionsParams struct {
 	Tail *int `json:"tail,omitempty"`
+}
+
+// CreateImageJSONBody defines parameters for CreateImage.
+type CreateImageJSONBody struct {
+	Architecture string                 `json:"Architecture"`
+	Config       map[string]interface{} `json:"Config"`
+	Layers       []KraudLayerReference  `json:"Layers"`
+	OciID        string                 `json:"OciID"`
+	Ref          string                 `json:"Ref"`
+}
+
+// CreateLayerParams defines parameters for CreateLayer.
+type CreateLayerParams struct {
+	// layer diff id according to OCI spec
+	Oid string `json:"oid"`
+
+	// exact sha256 of uploaded content. this may be different than oid if gziped.
+	Sha256 string `json:"sha256"`
+
+	// byte size of uploaded content
+	Size uint64 `json:"size"`
 }
 
 // AuthorizeSessionParams defines parameters for AuthorizeSession.
@@ -7524,6 +7562,14 @@ func (LaunchAppJSONRequestBody) Bind(*http.Request) error {
 	return nil
 }
 
+// CreateImageJSONRequestBody defines body for CreateImage for application/json ContentType.
+type CreateImageJSONRequestBody CreateImageJSONBody
+
+// Bind implements render.Binder.
+func (CreateImageJSONRequestBody) Bind(*http.Request) error {
+	return nil
+}
+
 // SendTelCodeJSONRequestBody defines body for SendTelCode for application/json ContentType.
 type SendTelCodeJSONRequestBody SendTelCodeJSONBody
 
@@ -7637,36 +7683,6 @@ func GetCoreV1apiResourcesJSON200Response(body IoK8sApimachineryPkgApisMetaV1API
 // ListEndpointsAllNamespacesJSON200Response is a constructor method for a ListEndpointsAllNamespaces response.
 // A *Response is returned with the configured status code and content type from the spec.
 func ListEndpointsAllNamespacesJSON200Response(body K8sEndpointsList) *Response {
-	return &Response{
-		body:        body,
-		Code:        200,
-		contentType: "application/json",
-	}
-}
-
-// ListImagesJSON200Response is a constructor method for a ListImages response.
-// A *Response is returned with the configured status code and content type from the spec.
-func ListImagesJSON200Response(body K8sImageList) *Response {
-	return &Response{
-		body:        body,
-		Code:        200,
-		contentType: "application/json",
-	}
-}
-
-// GetImageJSON200Response is a constructor method for a GetImage response.
-// A *Response is returned with the configured status code and content type from the spec.
-func GetImageJSON200Response(body K8sImage) *Response {
-	return &Response{
-		body:        body,
-		Code:        200,
-		contentType: "application/json",
-	}
-}
-
-// PatchImageJSON200Response is a constructor method for a PatchImage response.
-// A *Response is returned with the configured status code and content type from the spec.
-func PatchImageJSON200Response(body K8sImage) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,
@@ -8214,12 +8230,42 @@ func GetFeedAppVersionsJSON200Response(body KraudAppVersionList) *Response {
 	}
 }
 
+// ListImagesJSON200Response is a constructor method for a ListImages response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListImagesJSON200Response(body KraudImageNameList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// CreateImageJSON200Response is a constructor method for a CreateImage response.
+// A *Response is returned with the configured status code and content type from the spec.
+func CreateImageJSON200Response(body KraudCreateImageResponse) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
 // AttachLaunchJSON101Response is a constructor method for a AttachLaunch response.
 // A *Response is returned with the configured status code and content type from the spec.
 func AttachLaunchJSON101Response(body interface{}) *Response {
 	return &Response{
 		body:        body,
 		Code:        101,
+		contentType: "application/json",
+	}
+}
+
+// ListLayersJSON200Response is a constructor method for a ListLayers response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListLayersJSON200Response(body KraudLayerList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
 		contentType: "application/json",
 	}
 }
@@ -8250,16 +8296,6 @@ func CreateUserJSON201Response(body K8sUser) *Response {
 	return &Response{
 		body:        body,
 		Code:        201,
-		contentType: "application/json",
-	}
-}
-
-// GetUserMeJSON200Response is a constructor method for a GetUserMe response.
-// A *Response is returned with the configured status code and content type from the spec.
-func GetUserMeJSON200Response(body K8sUser) *Response {
-	return &Response{
-		body:        body,
-		Code:        200,
 		contentType: "application/json",
 	}
 }

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/99designs/keyring"
 	"github.com/kraudcloud/cli/api"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -29,7 +31,7 @@ func API() *api.Client {
 			if err != nil {
 				fmt.Fprintf(os.Stderr,
 					"No token available.\n"+
-						"Go to https://kraudcloud.com/profile and create a token, then set with `kra auth <token>`\n"+
+						"Go to https://kraudcloud.com/profile and create a token, then set with `kra login <token>`\n"+
 						"Or set the KR_ACCESS_TOKEN environment variable.\n")
 				os.Exit(1)
 			}
@@ -40,6 +42,17 @@ func API() *api.Client {
 		//TODO verify token is still valid
 
 		apiClient = api.NewClient(token)
+
+		_, err := apiClient.GetUserMe(context.Background())
+		if err != nil {
+			if strings.Contains(err.Error(), "Unauthorized") {
+				fmt.Fprintf(os.Stderr,
+					"Invalid or expired token.\n"+
+						"Go to https://kraudcloud.com/profile and create a token, then set with `kra login <token>`\n"+
+						"Or set the KR_ACCESS_TOKEN environment variable.\n")
+				os.Exit(1)
+			}
+		}
 
 	})
 

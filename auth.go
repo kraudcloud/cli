@@ -5,10 +5,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func authCMD() *cobra.Command {
+func loginCMD() *cobra.Command {
 
 	c := &cobra.Command{
-		Use:     "auth <token>",
+		Use:     "login <token>",
 		Aliases: []string{},
 		Short:   "set access token",
 		Args:    cobra.ExactArgs(1),

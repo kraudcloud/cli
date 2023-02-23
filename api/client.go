@@ -40,13 +40,16 @@ func (c *Client) Do(req *http.Request, response interface{}) error {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 201 {
+	if resp.StatusCode > 299 {
 		var ee ErrorResponse
 		err := json.NewDecoder(resp.Body).Decode(&ee)
 		if err != nil {
-			return err
+			return fmt.Errorf("%s", resp.Status)
 		}
-		return fmt.Errorf("%s", ee.Message)
+		if ee.Message != "" {
+			return fmt.Errorf("%s", ee.Message)
+		}
+		return fmt.Errorf("%s", resp.Status)
 	}
 
 	if response != nil {
@@ -57,4 +60,13 @@ func (c *Client) Do(req *http.Request, response interface{}) error {
 	}
 
 	return nil
+}
+
+func (c *Client) DoRaw(req *http.Request) (*http.Response, error) {
+
+	req.URL.Host = "api.kraudcloud.com"
+	req.URL.Scheme = "https"
+
+	req.Header.Set("Authorization", "Bearer "+c.AuthToken)
+	return c.HttpClient.Do(req)
 }

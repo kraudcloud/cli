@@ -16,8 +16,12 @@ func main() {
 
 	root.AddCommand(feedsCMD())
 	root.AddCommand(appsCMD())
-	root.AddCommand(authCMD())
+	root.AddCommand(loginCMD())
 	root.AddCommand(domainsCMD())
+	root.AddCommand(usersCMD())
+	root.AddCommand(imagesCMD())
+	root.AddCommand(layersCMD())
+	root.AddCommand(imagePushCMD())
 
 	root.Execute()
 }
