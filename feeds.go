@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func feeds() *cobra.Command {
+func feedsCMD() *cobra.Command {
 	c := &cobra.Command{
 		Use:     "feeds",
 		Aliases: []string{"feed"},

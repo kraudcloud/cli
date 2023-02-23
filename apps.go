@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func apps() *cobra.Command {
+func appsCMD() *cobra.Command {
 	c := &cobra.Command{
 		Use:     "apps",
 		Aliases: []string{"apps"},

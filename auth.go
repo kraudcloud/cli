@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func auth() *cobra.Command {
+func authCMD() *cobra.Command {
 
 	c := &cobra.Command{
 		Use:     "auth <token>",

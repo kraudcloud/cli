@@ -14,9 +14,10 @@ func main() {
 		Short: "kraud api command line interface",
 	}
 
-	root.AddCommand(feeds())
-	root.AddCommand(apps())
-	root.AddCommand(auth())
+	root.AddCommand(feedsCMD())
+	root.AddCommand(appsCMD())
+	root.AddCommand(authCMD())
+	root.AddCommand(domainsCMD())
 
 	root.Execute()
 }

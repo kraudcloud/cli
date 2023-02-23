@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/99designs/keyring"
 	"github.com/kraudcloud/cli/api"
-	"sync"
 	"os"
-	"fmt"
+	"sync"
 )
 
 var createApiOnce sync.Once
@@ -29,8 +29,8 @@ func API() *api.Client {
 			if err != nil {
 				fmt.Fprintf(os.Stderr,
 					"No token available.\n"+
-					"Go to https://kraudcloud.com/profile and create a token, then set with `kra auth <token>`\n" +
-					"Or set the KR_ACCESS_TOKEN environment variable.\n")
+						"Go to https://kraudcloud.com/profile and create a token, then set with `kra auth <token>`\n"+
+						"Or set the KR_ACCESS_TOKEN environment variable.\n")
 				os.Exit(1)
 			}
 
