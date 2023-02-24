@@ -10,8 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
-	"os"
-	"os/exec"
 
 	"fmt"
 	"github.com/k0kubun/go-ansi"
@@ -20,10 +18,12 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/mitchellh/colorstring"
 	"github.com/schollz/progressbar/v3"
+	"os"
 	"runtime"
-	"strconv"
-	"strings"
 	"sync"
+
+	//dockertypes "github.com/docker/docker/api/types"
+	dockerclient "github.com/docker/docker/client"
 )
 
 func imagesCMD() *cobra.Command {
@@ -81,47 +81,41 @@ type extractedFileInfo struct {
 	size     int64
 }
 
-func imageExtractFromDocker(ref string) (map[string]*extractedFileInfo, error) {
+func imageExtractFromDocker(ctx context.Context, serviceName string, ref string) (map[string]*extractedFileInfo, error) {
 
-	// docker save will save all matching images, so get exact id and size here
+	var barProxy io.Writer
 
-	cmd := exec.Command("docker", "image", "inspect", "--format", "{{.Id}} {{.Size}}", ref)
-	cmd.Stderr = os.Stderr
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("docker image inspect --format '{{.Id}} {{.Size}}' '%s': %w", ref, err)
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+
+		bar := NewBar(100, "[cyan]"+serviceName+"[reset] Extracting "+ref+" from docker")
+		defer bar.Finish()
+
+		barProxy = bar
+	} else {
+		colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Extracting "+ref+" from docker")
 	}
-	outs := strings.Split(string(strings.TrimSpace(string(out))), " ")
-	expectedsize, err := strconv.Atoi(outs[1])
+
+	docker, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, err
+	}
+	defer docker.Close()
+
+	img, _, err := docker.ImageInspectWithRaw(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
 
-	docker := exec.Command("docker", "save", outs[0])
-	docker.Stderr = os.Stderr
-
-	stdout, err := docker.StdoutPipe()
+	imgtar, err := docker.ImageSave(ctx, []string{img.ID})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	defer stdout.Close()
+	defer imgtar.Close()
 
-	if err := docker.Start(); err != nil {
-		panic(err)
+	var reader io.Reader = imgtar
+	if barProxy != nil {
+		reader = io.TeeReader(reader, barProxy)
 	}
-
-	var reader io.Reader = stdout
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-
-		bar := NewBar(int(expectedsize), "[cyan][1/4][reset] Extracting "+ref+" from docker")
-		defer bar.Finish()
-
-		reader = io.TeeReader(reader, bar)
-
-	} else {
-		log.Println("Extracting " + ref + " from docker ...")
-	}
-
 	tr := tar.NewReader(reader)
 
 	var tmpfiles = make(map[string]*extractedFileInfo)
@@ -159,7 +153,7 @@ func imageExtractFromDocker(ref string) (map[string]*extractedFileInfo, error) {
 	return tmpfiles, nil
 }
 
-func uploadLayers(r map[string]*extractedFileInfo) error {
+func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 
 	total := int64(0)
 	for _, v := range r {
@@ -168,10 +162,10 @@ func uploadLayers(r map[string]*extractedFileInfo) error {
 
 	var bar *progressbar.ProgressBar
 	if isatty.IsTerminal(os.Stdout.Fd()) {
-		bar = NewBar(int(total), "[cyan][3/4][reset] Uploading layers ")
+		bar = NewBar(int(total), "[cyan]"+serviceName+"[reset] Uploading layers ")
 		defer bar.Finish()
 	} else {
-		log.Println("Uploading Layers ...")
+		colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Uploading layers")
 	}
 
 	var wg sync.WaitGroup
@@ -242,11 +236,46 @@ func imagePushCMD() *cobra.Command {
 				panic(err)
 			}
 
-			for _, s := range spec.Services {
+			i := 0
+			for serviceName, s := range spec.Services {
+				if i > 0 {
+					fmt.Println()
+				}
+				i++
 
 				ref := s.Image
 
-				files, err := imageExtractFromDocker(ref)
+				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Analyzing image "+ref)
+
+				docker, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+				if err != nil {
+					panic(err)
+				}
+				defer docker.Close()
+
+				// first get the state of the remote image
+				remoteImage, _ := API().InspectImage(cmd.Context(), ref)
+
+				// then get the state of the local image
+				localImage, _, _ := docker.ImageInspectWithRaw(cmd.Context(), ref)
+
+				// if both exist and are valid, do nothing
+				if remoteImage != nil && localImage.ID != "" {
+					if localImage.ID == remoteImage.Amd64.OciID {
+						colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Remote image is up to date")
+						fmt.Println(remoteImage.AID)
+						continue
+					}
+				}
+
+				// if only the remote exists, do nothing
+				if remoteImage != nil && localImage.ID == "" {
+					colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Image "+ref+" not available locally!")
+					fmt.Println(remoteImage.AID)
+					continue
+				}
+
+				files, err := imageExtractFromDocker(cmd.Context(), serviceName, ref)
 
 				defer func() {
 					for _, t := range files {
@@ -306,12 +335,12 @@ func imagePushCMD() *cobra.Command {
 					}
 				}
 
-				err = uploadLayers(layers)
+				err = uploadLayers(serviceName, layers)
 				if err != nil {
 					panic(err)
 				}
 
-				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan][4/4][reset] Creating references")
+				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Creating references")
 
 				layerRefs := []api.KraudLayerReference{}
 				for _, diffID := range config.Rootfs.DiffIDs {
@@ -334,7 +363,7 @@ func imagePushCMD() *cobra.Command {
 				}
 
 				for _, rn := range rsp.Renamed {
-					fmt.Fprintln(os.Stderr, "Renamed existing image to", rn.Ref)
+					colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Renamed existing image to "+rn.Ref)
 				}
 
 				fmt.Println(rsp.Created.AID)

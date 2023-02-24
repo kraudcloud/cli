@@ -31,7 +31,6 @@ func (c *Client) Do(req *http.Request, response interface{}) error {
 	req.URL.Host = "api.kraudcloud.com"
 	req.URL.Scheme = "https"
 
-
 	req.Header.Set("Authorization", "Bearer "+c.AuthToken)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")

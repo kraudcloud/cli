@@ -29,6 +29,28 @@ func (c *Client) ListImages(ctx context.Context) (*KraudImageNameList, error) {
 	return response, nil
 }
 
+func (c *Client) InspectImage(ctx context.Context, q string) (*KraudImageName, error) {
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"GET",
+		"/apis/kraudcloud.com/v1/images/"+q,
+		nil,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var response = &KraudImageName{}
+	err = c.Do(req, response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func (c *Client) CreateImage(ctx context.Context, body CreateImageJSONBody) (*KraudCreateImageResponse, error) {
 
 	jq, err := json.Marshal(body)
