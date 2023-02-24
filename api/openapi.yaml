@@ -1876,7 +1876,7 @@ components:
             description: Image is a docker image for a specific architecture
             properties:
                 Config:
-                    type: object
+                    type: string
                 ID:
                     type: string
                 Layers:
@@ -10223,7 +10223,7 @@ paths:
                                 Architecture:
                                     type: string
                                 Config:
-                                    type: object
+                                    type: string
                                 Layers:
                                     items:
                                         $ref: '#/components/schemas/Kraud.LayerReference'

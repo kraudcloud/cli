@@ -29,12 +29,12 @@ func (c *Client) ListLayers(ctx context.Context) (*KraudLayerList, error) {
 	return response, nil
 }
 
-func (c *Client) PushLayer(ctx context.Context, oid string, b io.Reader, size uint64, zsha string) (*KraudLayer, error) {
+func (c *Client) PushLayer(ctx context.Context, oid string, b io.Reader, size uint64) (*KraudLayer, error) {
 
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
-		fmt.Sprintf("/apis/kraudcloud.com/v1/layers?size=%d&sha256=%s&oid=%s", size, zsha, oid),
+		fmt.Sprintf("/apis/kraudcloud.com/v1/layers?maxsize=%d&oid=%s", size, oid),
 		b,
 	)
 

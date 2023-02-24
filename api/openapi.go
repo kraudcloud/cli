@@ -1482,11 +1482,11 @@ type KraudCreateImageResponse struct {
 
 // Image is a docker image for a specific architecture
 type KraudImage struct {
-	Config map[string]interface{} `json:"Config"`
-	ID     string                 `json:"ID"`
-	Layers []KraudLayerReference  `json:"Layers"`
-	OciID  string                 `json:"OciID"`
-	Size   uint64                 `json:"Size"`
+	Config string                `json:"Config"`
+	ID     string                `json:"ID"`
+	Layers []KraudLayerReference `json:"Layers"`
+	OciID  string                `json:"OciID"`
+	Size   uint64                `json:"Size"`
 }
 
 // Image is a named docker image
@@ -6510,11 +6510,11 @@ type GetFeedAppVersionsParams struct {
 
 // CreateImageJSONBody defines parameters for CreateImage.
 type CreateImageJSONBody struct {
-	Architecture string                 `json:"Architecture"`
-	Config       map[string]interface{} `json:"Config"`
-	Layers       []KraudLayerReference  `json:"Layers"`
-	OciID        string                 `json:"OciID"`
-	Ref          string                 `json:"Ref"`
+	Architecture string                `json:"Architecture"`
+	Config       string                `json:"Config"`
+	Layers       []KraudLayerReference `json:"Layers"`
+	OciID        string                `json:"OciID"`
+	Ref          string                `json:"Ref"`
 }
 
 // CreateLayerParams defines parameters for CreateLayer.

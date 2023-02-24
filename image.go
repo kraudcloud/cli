@@ -75,14 +75,21 @@ func imagesLs() *cobra.Command {
 	return c
 }
 
-func imageExtractFromDocker(ref string) (map[string]string, error) {
+type extractedFileInfo struct {
+	hash     string
+	tempfile string
+	size     int64
+}
+
+func imageExtractFromDocker(ref string) (map[string]*extractedFileInfo, error) {
 
 	// docker save will save all matching images, so get exact id and size here
 
-	cmd := exec.Command("docker", "inspect", "--format", "{{.Id}} {{.Size}}", ref)
+	cmd := exec.Command("docker", "image", "inspect", "--format", "{{.Id}} {{.Size}}", ref)
+	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("docker image inspect --format '{{.Id}} {{.Size}}' '%s': %w", ref, err)
 	}
 	outs := strings.Split(string(strings.TrimSpace(string(out))), " ")
 	expectedsize, err := strconv.Atoi(outs[1])
@@ -106,18 +113,18 @@ func imageExtractFromDocker(ref string) (map[string]string, error) {
 	var reader io.Reader = stdout
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 
-		bar := NewBar(int(expectedsize), "[cyan][1/4][reset] Extracting " +ref + " from docker")
+		bar := NewBar(int(expectedsize), "[cyan][1/4][reset] Extracting "+ref+" from docker")
 		defer bar.Finish()
 
 		reader = io.TeeReader(reader, bar)
 
 	} else {
-		log.Println("Extracting " + ref +  " from docker ...")
+		log.Println("Extracting " + ref + " from docker ...")
 	}
 
 	tr := tar.NewReader(reader)
 
-	var tmpfiles = make(map[string]string)
+	var tmpfiles = make(map[string]*extractedFileInfo)
 
 	for {
 		h, err := tr.Next()
@@ -134,120 +141,29 @@ func imageExtractFromDocker(ref string) (map[string]string, error) {
 		}
 		defer file.Close()
 
-		if _, err := io.Copy(file, tr); err != nil {
+		hasher := sha256.New()
+		w := io.MultiWriter(file, hasher)
+
+		size, err := io.Copy(w, tr)
+		if err != nil {
 			return nil, err
 		}
 
-		tmpfiles[h.Name] = file.Name()
+		tmpfiles[h.Name] = &extractedFileInfo{
+			hash:     fmt.Sprintf("%x", hasher.Sum(nil)),
+			tempfile: file.Name(),
+			size:     size,
+		}
 	}
 
 	return tmpfiles, nil
 }
 
-type compressedInfo struct {
-	shaBeforeZip string
-	shaAfterZip  string
-	tmpfilename  string
-	sizeAfterZip int64
-}
-
-func compressLayers(files map[string]string) (r []compressedInfo, err error) {
-
-	var total int64
-
-	for _, tmpname := range files {
-		f, err := os.Open(tmpname)
-		if err != nil {
-			return r, err
-		}
-		defer f.Close()
-
-		fi, err := f.Stat()
-		if err != nil {
-			return r, err
-		}
-
-		total += fi.Size()
-	}
-
-	var bar *progressbar.ProgressBar
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		bar = NewBar(int(total), "[cyan][2/4][reset] Compressing layers ")
-		defer bar.Finish()
-	} else {
-		log.Println("Compressing Layers ...")
-	}
-
-	var wg sync.WaitGroup
-	var lock sync.Mutex
-
-	for _, tmpname := range files {
-
-		wg.Add(1)
-
-		go func(tmpname string) {
-
-			fi, err := os.Open(tmpname)
-			if err != nil {
-				panic(err)
-			}
-			defer fi.Close()
-
-			os.Remove(tmpname)
-
-			fo, err := os.Create(tmpname)
-			if err != nil {
-				panic(err)
-			}
-			defer fo.Close()
-
-			h1 := sha256.New()
-			h2 := sha256.New()
-
-			zipper := gzip.NewWriter(io.MultiWriter(fo, h1))
-
-			oo := io.MultiWriter(zipper, h2)
-
-			if bar != nil {
-				oo = io.MultiWriter(oo, bar)
-			}
-
-			if _, err := io.Copy(oo, fi); err != nil {
-				panic(err)
-			}
-
-			zipper.Close()
-
-			foi, err := fo.Stat()
-			if err != nil {
-				panic(err)
-			}
-
-			lock.Lock()
-			defer lock.Unlock()
-
-			r = append(r, compressedInfo{
-				shaBeforeZip: fmt.Sprintf("%x", h2.Sum(nil)),
-				shaAfterZip:  fmt.Sprintf("%x", h1.Sum(nil)),
-				tmpfilename:  tmpname,
-				sizeAfterZip: foi.Size(),
-			})
-
-			wg.Done()
-
-		}(tmpname)
-	}
-
-	wg.Wait()
-
-	return r, nil
-}
-
-func uploadLayers(r []compressedInfo) error {
+func uploadLayers(r map[string]*extractedFileInfo) error {
 
 	total := int64(0)
 	for _, v := range r {
-		total += v.sizeAfterZip
+		total += v.size
 	}
 
 	var bar *progressbar.ProgressBar
@@ -264,11 +180,11 @@ func uploadLayers(r []compressedInfo) error {
 
 		wg.Add(1)
 
-		go func(v compressedInfo) {
+		go func(v *extractedFileInfo) {
 
 			defer wg.Done()
 
-			layertargz, err := os.Open(v.tmpfilename)
+			layertargz, err := os.Open(v.tempfile)
 			if err != nil {
 				panic(err)
 			}
@@ -279,15 +195,31 @@ func uploadLayers(r []compressedInfo) error {
 				reader = io.TeeReader(reader, bar)
 			}
 
-			_, err = API().PushLayer(context.Background(),
-				"sha256:"+v.shaBeforeZip,
-				reader,
-				uint64(v.sizeAfterZip),
-				v.shaAfterZip,
+			hasher := sha256.New()
+
+			pr, pw := io.Pipe()
+
+			go func() {
+				defer pw.Close()
+				zipper := gzip.NewWriter(io.MultiWriter(pw, hasher))
+				defer zipper.Close()
+				io.Copy(zipper, reader)
+			}()
+
+			pushedlayer, err := API().PushLayer(context.Background(),
+				"sha256:"+v.hash,
+				pr,
+				uint64(v.size),
 			)
 			if err != nil {
 				panic(err)
 			}
+
+			if pushedlayer.Sha256 != fmt.Sprintf("%x", hasher.Sum(nil)) {
+				// this also happens when we close early because the remove already has the layer
+				// panic("sha256 mismatch after upload")
+			}
+
 		}(v)
 
 	}
@@ -318,7 +250,7 @@ func imagePushCMD() *cobra.Command {
 
 				defer func() {
 					for _, t := range files {
-						os.Remove(t)
+						os.Remove(t.tempfile)
 					}
 				}()
 
@@ -326,7 +258,7 @@ func imagePushCMD() *cobra.Command {
 					panic(err)
 				}
 
-				if files["manifest.json"] == "" {
+				if files["manifest.json"] == nil {
 					panic("manifest.json not found")
 				}
 
@@ -335,7 +267,7 @@ func imagePushCMD() *cobra.Command {
 					Layers []string
 				}
 
-				manifestFile, err := os.Open(files["manifest.json"])
+				manifestFile, err := os.Open(files["manifest.json"].tempfile)
 				if err != nil {
 					panic(err)
 				}
@@ -345,15 +277,15 @@ func imagePushCMD() *cobra.Command {
 				}
 
 				var config struct {
-					Architecture string                 `json:"architecture"`
-					Config       map[string]interface{} `json:"config"`
+					Architecture string          `json:"architecture"`
+					Config       json.RawMessage `json:"config"`
 					Rootfs       struct {
 						Type    string   `json:"type"`
 						DiffIDs []string `json:"diff_ids"`
 					} `json:"rootfs"`
 				}
 
-				configString, err := ioutil.ReadFile(files[manifest[0].Config])
+				configString, err := ioutil.ReadFile(files[manifest[0].Config].tempfile)
 				if err != nil {
 					panic(err)
 				}
@@ -362,24 +294,19 @@ func imagePushCMD() *cobra.Command {
 					panic(err)
 				}
 
-				configHash := sha256.Sum256(configString)
+				ociid := "sha256:" + files[manifest[0].Config].hash
 
-				layers := make(map[string]string)
+				layers := make(map[string]*extractedFileInfo)
 				for _, m := range manifest {
 					for _, l := range m.Layers {
 						layers[l] = files[l]
-						if files[l] == "" {
+						if files[l] == nil {
 							panic(fmt.Sprintf("layer missing %s", l))
 						}
 					}
 				}
 
-				ci, err := compressLayers(layers)
-				if err != nil {
-					panic(err)
-				}
-
-				err = uploadLayers(ci)
+				err = uploadLayers(layers)
 				if err != nil {
 					panic(err)
 				}
@@ -396,8 +323,8 @@ func imagePushCMD() *cobra.Command {
 
 				rsp, err := API().CreateImage(context.Background(), api.CreateImageJSONBody{
 					Ref:          ref,
-					Config:       config.Config,
-					OciID:        fmt.Sprintf("sha256:%x", configHash[:]),
+					Config:       string(config.Config),
+					OciID:        ociid,
 					Architecture: runtime.GOARCH,
 					Layers:       layerRefs,
 				})

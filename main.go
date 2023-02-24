@@ -10,8 +10,6 @@ import (
 
 var log = logrus.New()
 
-
-
 var COMPOSE_FILENAME string
 
 func main() {
@@ -19,6 +17,7 @@ func main() {
 	root := cobra.Command{
 		Use:   "kra [command]",
 		Short: "kraud api command line interface",
+		Version: "1.0.0",
 	}
 
 	root.AddCommand(feedsCMD())
@@ -31,7 +30,6 @@ func main() {
 	root.AddCommand(imagePushCMD())
 
 	root.PersistentFlags().StringVarP(&COMPOSE_FILENAME, "file", "f", "docker-compose.yml", "docker-compose.yml file")
-
 
 	defer func() {
 		if r := recover(); r != nil {
