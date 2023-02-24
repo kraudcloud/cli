@@ -20,22 +20,19 @@ func setupCMD() *cobra.Command {
 
 func dockerSetupCmd() *cobra.Command {
 
+	var tokenName string
+
 	c := &cobra.Command{
 		Use:   "docker",
 		Short: "setup local docker to access kraud via context",
 		Run: func(cmd *cobra.Command, args []string) {
-
-			hostname, err := os.Hostname()
-			if err != nil {
-				panic(err)
-			}
 
 			me, err := API().GetUserMe(cmd.Context())
 			if err != nil {
 				panic(err)
 			}
 
-			z, err := API().RotateUserCredentials(cmd.Context(), ".me", hostname+"-docker-via-kra", "docker")
+			z, err := API().RotateUserCredentials(cmd.Context(), ".me", tokenName, "docker")
 			if err != nil {
 				panic(err)
 			}
@@ -61,6 +58,8 @@ func dockerSetupCmd() *cobra.Command {
 
 		},
 	}
+
+	c.Flags().StringVar(&tokenName, "token-name", "kra-setup-docker", "token name")
 
 	return c
 }
