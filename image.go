@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"github.com/k0kubun/go-ansi"
 	"github.com/kraudcloud/cli/api"
+	"github.com/kraudcloud/cli/compose"
 	"github.com/mattn/go-isatty"
 	"github.com/mitchellh/colorstring"
 	"github.com/schollz/progressbar/v3"
@@ -47,7 +48,7 @@ func imagesLs() *cobra.Command {
 
 			ls, err := API().ListImages(cmd.Context())
 			if err != nil {
-				log.Fatalln(err)
+				panic(err)
 			}
 
 			table := NewTable("AID", "Size", "Name")
@@ -78,7 +79,7 @@ func imageExtractFromDocker(ref string) (map[string]string, error) {
 
 	// docker save will save all matching images, so get exact id and size here
 
-	cmd := exec.Command("docker", "inspect", ref, "--format", "{{.Id}} {{.Size}}")
+	cmd := exec.Command("docker", "inspect", "--format", "{{.Id}} {{.Size}}", ref)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -94,24 +95,24 @@ func imageExtractFromDocker(ref string) (map[string]string, error) {
 
 	stdout, err := docker.StdoutPipe()
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 	defer stdout.Close()
 
 	if err := docker.Start(); err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 
 	var reader io.Reader = stdout
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 
-		bar := NewBar(int(expectedsize), "[cyan][1/4][reset] Extracting image from docker")
+		bar := NewBar(int(expectedsize), "[cyan][1/4][reset] Extracting " +ref + " from docker")
 		defer bar.Finish()
 
 		reader = io.TeeReader(reader, bar)
 
 	} else {
-		log.Println("Extracting image from docker ...")
+		log.Println("Extracting " + ref +  " from docker ...")
 	}
 
 	tr := tar.NewReader(reader)
@@ -129,7 +130,7 @@ func imageExtractFromDocker(ref string) (map[string]string, error) {
 
 		file, err := ioutil.TempFile("", "dockersave")
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		defer file.Close()
 
@@ -188,7 +189,7 @@ func compressLayers(files map[string]string) (r []compressedInfo, err error) {
 
 			fi, err := os.Open(tmpname)
 			if err != nil {
-				log.Fatalln(err)
+				panic(err)
 			}
 			defer fi.Close()
 
@@ -196,7 +197,7 @@ func compressLayers(files map[string]string) (r []compressedInfo, err error) {
 
 			fo, err := os.Create(tmpname)
 			if err != nil {
-				log.Fatalln(err)
+				panic(err)
 			}
 			defer fo.Close()
 
@@ -212,14 +213,14 @@ func compressLayers(files map[string]string) (r []compressedInfo, err error) {
 			}
 
 			if _, err := io.Copy(oo, fi); err != nil {
-				log.Fatalln(err)
+				panic(err)
 			}
 
 			zipper.Close()
 
 			foi, err := fo.Stat()
 			if err != nil {
-				log.Fatalln(err)
+				panic(err)
 			}
 
 			lock.Lock()
@@ -269,7 +270,7 @@ func uploadLayers(r []compressedInfo) error {
 
 			layertargz, err := os.Open(v.tmpfilename)
 			if err != nil {
-				log.Fatalln(err)
+				panic(err)
 			}
 			defer layertargz.Close()
 
@@ -285,7 +286,7 @@ func uploadLayers(r []compressedInfo) error {
 				v.shaAfterZip,
 			)
 			if err != nil {
-				log.Fatalln(err)
+				panic(err)
 			}
 		}(v)
 
@@ -299,108 +300,119 @@ func uploadLayers(r []compressedInfo) error {
 func imagePushCMD() *cobra.Command {
 
 	c := &cobra.Command{
-		Use:   "push [ref]",
-		Short: "Push a local docker image to the kraud",
-		Args:  cobra.ExactArgs(1),
+		Use:   "push",
+		Short: "Push local images to the kraud",
+		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 
-			files, err := imageExtractFromDocker(args[0])
+			spec, err := compose.ParseFile(COMPOSE_FILENAME)
+			if err != nil {
+				panic(err)
+			}
 
-			defer func() {
-				for _, t := range files {
-					os.Remove(t)
+			for _, s := range spec.Services {
+
+				ref := s.Image
+
+				files, err := imageExtractFromDocker(ref)
+
+				defer func() {
+					for _, t := range files {
+						os.Remove(t)
+					}
+				}()
+
+				if err != nil {
+					panic(err)
 				}
-			}()
 
-			if err != nil {
-				log.Fatalln(err)
-			}
+				if files["manifest.json"] == "" {
+					panic("manifest.json not found")
+				}
 
-			if files["manifest.json"] == "" {
-				log.Fatalln("manifest.json not found")
-			}
+				var manifest []struct {
+					Config string
+					Layers []string
+				}
 
-			var manifest []struct {
-				Config string
-				Layers []string
-			}
+				manifestFile, err := os.Open(files["manifest.json"])
+				if err != nil {
+					panic(err)
+				}
 
-			manifestFile, err := os.Open(files["manifest.json"])
-			if err != nil {
-				log.Fatalln(err)
-			}
+				if err := json.NewDecoder(manifestFile).Decode(&manifest); err != nil {
+					panic(err)
+				}
 
-			if err := json.NewDecoder(manifestFile).Decode(&manifest); err != nil {
-				log.Fatalln(err)
-			}
+				var config struct {
+					Architecture string                 `json:"architecture"`
+					Config       map[string]interface{} `json:"config"`
+					Rootfs       struct {
+						Type    string   `json:"type"`
+						DiffIDs []string `json:"diff_ids"`
+					} `json:"rootfs"`
+				}
 
-			var config struct {
-				Architecture string                 `json:"architecture"`
-				Config       map[string]interface{} `json:"config"`
-				Rootfs       struct {
-					Type    string   `json:"type"`
-					DiffIDs []string `json:"diff_ids"`
-				} `json:"rootfs"`
-			}
+				configString, err := ioutil.ReadFile(files[manifest[0].Config])
+				if err != nil {
+					panic(err)
+				}
 
-			configString, err := ioutil.ReadFile(files[manifest[0].Config])
-			if err != nil {
-				log.Fatalln(err)
-			}
+				if err := json.Unmarshal(configString, &config); err != nil {
+					panic(err)
+				}
 
-			if err := json.Unmarshal(configString, &config); err != nil {
-				log.Fatalln(err)
-			}
+				configHash := sha256.Sum256(configString)
 
-			configHash := sha256.Sum256(configString)
-
-			layers := make(map[string]string)
-			for _, m := range manifest {
-				for _, l := range m.Layers {
-					layers[l] = files[l]
-					if files[l] == "" {
-						log.Fatalln("layer missing", l)
+				layers := make(map[string]string)
+				for _, m := range manifest {
+					for _, l := range m.Layers {
+						layers[l] = files[l]
+						if files[l] == "" {
+							panic(fmt.Sprintf("layer missing %s", l))
+						}
 					}
 				}
-			}
 
-			ci, err := compressLayers(layers)
-			if err != nil {
-				log.Fatalln(err)
-			}
+				ci, err := compressLayers(layers)
+				if err != nil {
+					panic(err)
+				}
 
-			err = uploadLayers(ci)
-			if err != nil {
-				log.Fatalln(err)
-			}
+				err = uploadLayers(ci)
+				if err != nil {
+					panic(err)
+				}
 
-			colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan][4/4][reset] Creating references")
+				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan][4/4][reset] Creating references")
 
-			layerRefs := []api.KraudLayerReference{}
-			for _, diffID := range config.Rootfs.DiffIDs {
-				var diffID = diffID
-				layerRefs = append(layerRefs, api.KraudLayerReference{
-					OciID: &diffID,
+				layerRefs := []api.KraudLayerReference{}
+				for _, diffID := range config.Rootfs.DiffIDs {
+					var diffID = diffID
+					layerRefs = append(layerRefs, api.KraudLayerReference{
+						OciID: &diffID,
+					})
+				}
+
+				rsp, err := API().CreateImage(context.Background(), api.CreateImageJSONBody{
+					Ref:          ref,
+					Config:       config.Config,
+					OciID:        fmt.Sprintf("sha256:%x", configHash[:]),
+					Architecture: runtime.GOARCH,
+					Layers:       layerRefs,
 				})
+
+				if err != nil {
+					panic(err)
+				}
+
+				for _, rn := range rsp.Renamed {
+					fmt.Fprintln(os.Stderr, "Renamed existing image to", rn.Ref)
+				}
+
+				fmt.Println(rsp.Created.AID)
+
 			}
-
-			rsp, err := API().CreateImage(context.Background(), api.CreateImageJSONBody{
-				Ref:          args[0],
-				Config:       config.Config,
-				OciID:        fmt.Sprintf("sha256:%x", configHash[:]),
-				Architecture: runtime.GOARCH,
-				Layers:       layerRefs,
-			})
-
-			if err != nil {
-				log.Fatalln(err)
-			}
-
-			for _, rn := range rsp.Renamed {
-				fmt.Fprintln(os.Stderr, "Renamed existing image to", rn.Ref)
-			}
-
-			fmt.Println(rsp.Created.AID)
 
 		},
 	}
