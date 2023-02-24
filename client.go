@@ -39,8 +39,6 @@ func API() *api.Client {
 			token = string(i.Data)
 		}
 
-		//TODO verify token is still valid
-
 		apiClient = api.NewClient(token)
 
 		_, err := apiClient.GetUserMe(context.Background())
@@ -52,6 +50,7 @@ func API() *api.Client {
 						"Or set the KR_ACCESS_TOKEN environment variable.\n")
 				os.Exit(1)
 			}
+			panic(err)
 		}
 
 	})
