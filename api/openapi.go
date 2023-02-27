@@ -5026,10 +5026,15 @@ type KrCradleState struct {
 
 // KrVmmContainerReport defines model for kr.VmmContainerReport.
 type KrVmmContainerReport struct {
-	Error    *string `json:"Error,omitempty"`
 	ExitCode *int    `json:"ExitCode,omitempty"`
 	Log      *string `json:"Log,omitempty"`
+	Message  *string `json:"Message,omitempty"`
 	State    *uint32 `json:"State,omitempty"`
+}
+
+// KrVmmPodReport defines model for kr.VmmPodReport.
+type KrVmmPodReport struct {
+	Reason *string `json:"Reason,omitempty"`
 }
 
 // KraudAppOverview defines model for kraud.AppOverview.
@@ -5098,6 +5103,22 @@ type KraudAppVersionList []KraudAppVersion
 type KraudCreateFeed struct {
 	IconURL string `json:"icon_url"`
 	Name    string `json:"name"`
+}
+
+// KraudEvent defines model for kraud.Event.
+type KraudEvent struct {
+	AID       *string                 `json:"AID,omitempty"`
+	Action    *string                 `json:"Action,omitempty"`
+	Details   *map[string]interface{} `json:"Details,omitempty"`
+	ID        *string                 `json:"ID,omitempty"`
+	Reason    *string                 `json:"Reason,omitempty"`
+	Resource  *string                 `json:"Resource,omitempty"`
+	Severity  *string                 `json:"Severity,omitempty"`
+	System    *string                 `json:"System,omitempty"`
+	Timestamp *string                 `json:"Timestamp,omitempty"`
+	TraceID   *string                 `json:"TraceID,omitempty"`
+	UserID    *string                 `json:"UserID,omitempty"`
+	UserNR    *int                    `json:"UserNR,omitempty"`
 }
 
 // KraudFeed defines model for kraud.Feed.
@@ -6488,6 +6509,9 @@ type GenerateCertParams struct {
 // VmmReportContainerStateJSONBody defines parameters for VmmReportContainerState.
 type VmmReportContainerStateJSONBody KrVmmContainerReport
 
+// VmmReportPodStateJSONBody defines parameters for VmmReportPodState.
+type VmmReportPodStateJSONBody KrVmmPodReport
+
 // CreateFeedJSONBody defines parameters for CreateFeed.
 type CreateFeedJSONBody KraudCreateFeed
 
@@ -6522,11 +6546,8 @@ type CreateLayerParams struct {
 	// layer diff id according to OCI spec
 	Oid string `json:"oid"`
 
-	// exact sha256 of uploaded content. this may be different than oid if gziped.
-	Sha256 string `json:"sha256"`
-
-	// byte size of uploaded content
-	Size uint64 `json:"size"`
+	// worst case byte size of layer. actual post body may be smaller but not bigger.
+	Maxsize uint64 `json:"maxsize"`
 }
 
 // AuthorizeSessionParams defines parameters for AuthorizeSession.
@@ -7546,6 +7567,14 @@ func (VmmReportContainerStateJSONRequestBody) Bind(*http.Request) error {
 	return nil
 }
 
+// VmmReportPodStateJSONRequestBody defines body for VmmReportPodState for application/json ContentType.
+type VmmReportPodStateJSONRequestBody VmmReportPodStateJSONBody
+
+// Bind implements render.Binder.
+func (VmmReportPodStateJSONRequestBody) Bind(*http.Request) error {
+	return nil
+}
+
 // CreateFeedJSONRequestBody defines body for CreateFeed for application/json ContentType.
 type CreateFeedJSONRequestBody CreateFeedJSONBody
 
@@ -8170,6 +8199,16 @@ func GetKraudcloudV1apiResourcesJSON200Response(body IoK8sApimachineryPkgApisMet
 	}
 }
 
+// GetEventsStreamJSON200Response is a constructor method for a GetEventsStream response.
+// A *Response is returned with the configured status code and content type from the spec.
+func GetEventsStreamJSON200Response(body KraudEvent) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
 // GetFeedsJSON200Response is a constructor method for a GetFeeds response.
 // A *Response is returned with the configured status code and content type from the spec.
 func GetFeedsJSON200Response(body KraudFeedList) *Response {
@@ -8243,6 +8282,16 @@ func ListImagesJSON200Response(body KraudImageNameList) *Response {
 // CreateImageJSON200Response is a constructor method for a CreateImage response.
 // A *Response is returned with the configured status code and content type from the spec.
 func CreateImageJSON200Response(body KraudCreateImageResponse) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// InspectImageJSON200Response is a constructor method for a InspectImage response.
+// A *Response is returned with the configured status code and content type from the spec.
+func InspectImageJSON200Response(body KraudImageName) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,

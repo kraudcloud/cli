@@ -8329,15 +8329,20 @@ components:
             type: object
         kr.VmmContainerReport:
             properties:
-                Error:
-                    type: string
                 ExitCode:
                     type: integer
                 Log:
                     type: string
+                Message:
+                    type: string
                 State:
                     format: uint32
                     type: integer
+            type: object
+        kr.VmmPodReport:
+            properties:
+                Reason:
+                    type: string
             type: object
         kraud.AppOverview:
             properties:
@@ -8438,6 +8443,33 @@ components:
             required:
                 - name
                 - icon_url
+            type: object
+        kraud.Event:
+            properties:
+                AID:
+                    type: string
+                Action:
+                    type: string
+                Details:
+                    type: object
+                ID:
+                    type: string
+                Reason:
+                    type: string
+                Resource:
+                    type: string
+                Severity:
+                    type: string
+                System:
+                    type: string
+                Timestamp:
+                    type: string
+                TraceID:
+                    type: string
+                UserID:
+                    type: string
+                UserNR:
+                    type: integer
             type: object
         kraud.Feed:
             properties:
@@ -10015,6 +10047,25 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/kr.CradleState'
                     description: Upgraded
+    /apis/kr.vmm/v1/pod/{id}/report.json:
+        post:
+            description: cradle sets persisted state here
+            operationId: vmmReportPodState
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/kr.VmmPodReport'
+                required: true
+            responses:
+                201:
+                    description: OK
     /apis/kr.vmm/v1/pods/{id}/launch.json:
         get:
             description: Get pod spec for vmm2
@@ -10041,6 +10092,17 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/io.k8s.apimachinery.pkg.apis.meta.v1.APIResourceList'
+                    description: OK
+    /apis/kraudcloud.com/v1/events/stream.json:
+        get:
+            description: Get events, one line per event
+            operationId: getEventsStream
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kraud.Event'
                     description: OK
     /apis/kraudcloud.com/v1/feeds:
         get:
@@ -10248,6 +10310,23 @@ paths:
                     description: OK
                 "401":
                     description: Unauthorized
+    /apis/kraudcloud.com/v1/images/{q}:
+        get:
+            operationId: inspectImage
+            parameters:
+                - description: aid or ref or ociid
+                  in: path
+                  name: q
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.ImageName'
+                    description: OK
     /apis/kraudcloud.com/v1/launch/{launch_id}/attach:
         get:
             operationId: attachLaunch
@@ -10287,15 +10366,9 @@ paths:
                   required: true
                   schema:
                     type: string
-                - description: exact sha256 of uploaded content. this may be different than oid if gziped.
+                - description: worst case byte size of layer. actual post body may be smaller but not bigger.
                   in: query
-                  name: sha256
-                  required: true
-                  schema:
-                    type: string
-                - description: byte size of uploaded content
-                  in: query
-                  name: size
+                  name: maxsize
                   required: true
                   schema:
                     format: uint64

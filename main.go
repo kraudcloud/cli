@@ -17,7 +17,7 @@ func main() {
 	root := cobra.Command{
 		Use:     "kra [command]",
 		Short:   "kraud api command line interface",
-		Version: "1.0.0",
+		Version: "1.1.0",
 	}
 
 	root.AddCommand(feedsCMD())
@@ -29,6 +29,7 @@ func main() {
 	root.AddCommand(layersCMD())
 	root.AddCommand(imagePushCMD())
 	root.AddCommand(setupCMD())
+	root.AddCommand(eventsCMD())
 
 	root.PersistentFlags().StringVarP(&COMPOSE_FILENAME, "file", "f", "docker-compose.yml", "docker-compose.yml file")
 
