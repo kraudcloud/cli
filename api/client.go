@@ -16,8 +16,18 @@ type Client struct {
 }
 
 func NewClient(authToken string) *Client {
+
+
+	// disable http2 because it appears to be very slow,
+	// to the point of making image upload unusable
+	htClone := http.DefaultTransport.(*http.Transport).Clone()
+	htClone.ForceAttemptHTTP2 = false
+	htClone.TLSClientConfig.NextProtos = []string{"http/1.1"}
+
 	return &Client{
-		HttpClient: http.DefaultClient,
+		HttpClient: &http.Client{
+			Transport: htClone,
+		},
 		AuthToken:  authToken,
 	}
 }
