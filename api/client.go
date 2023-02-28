@@ -32,7 +32,11 @@ func (c *Client) Do(req *http.Request, response interface{}) error {
 	req.URL.Scheme = "https"
 
 	req.Header.Set("Authorization", "Bearer "+c.AuthToken)
-	req.Header.Set("Content-Type", "application/json")
+
+	if req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "kra v1.0.1")
 	resp, err := c.HttpClient.Do(req)

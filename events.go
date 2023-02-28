@@ -70,10 +70,17 @@ func eventsCMD() *cobra.Command {
 					reason = *ev.Reason
 				}
 
-				s := fmt.Sprintf("[cyan][%s] [blue]%-16s[reset] %s\n",
+				var s = fmt.Sprintf("[cyan][%s] [blue]%-16s[reset] ",
 					ts,
-					resAndAction,
-					reason)
+					resAndAction)
+
+				if ev.Severity != nil && *ev.Severity == "error" {
+					s += fmt.Sprintf("[red]%s[reset]\n", reason)
+				} else if ev.Severity != nil && *ev.Severity == "warning" {
+					s += fmt.Sprintf("[orange]%s[reset]\n", reason)
+				} else {
+					s += fmt.Sprintf("%s\n", reason)
+				}
 
 				if ev.System != nil {
 					s += fmt.Sprintf("  system: %s\n", *ev.System)

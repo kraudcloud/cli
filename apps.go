@@ -28,7 +28,6 @@ func appsCMD() *cobra.Command {
 
 func appsLs() *cobra.Command {
 
-	format := "table"
 	feed := ""
 
 	c := &cobra.Command{
@@ -61,8 +60,7 @@ func appsLs() *cobra.Command {
 		},
 	}
 
-	c.Flags().StringVarP(&feed, "feed", "f", "", "store to push to")
-	c.Flags().StringVarP(&format, "output", "o", "table", "output format (table|json)")
+	c.Flags().StringVar(&feed, "feed", "", "store to list from")
 	c.MarkFlagRequired("feed")
 
 	return c
@@ -129,7 +127,7 @@ func appsPush() *cobra.Command {
 		},
 	}
 
-	c.Flags().StringVarP(&feed, "feed", "f", "", "store to push to")
+	c.Flags().StringVar(&feed, "feed", "", "store to push to")
 	c.Flags().StringVarP(&changelog, "changelog", "c", "", "changelog for the app")
 	c.MarkFlagRequired("feed")
 

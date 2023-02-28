@@ -17,7 +17,7 @@ func main() {
 	root := cobra.Command{
 		Use:     "kra [command]",
 		Short:   "kraud api command line interface",
-		Version: "1.1.0",
+		Version: "1.1.2",
 	}
 
 	root.AddCommand(feedsCMD())
