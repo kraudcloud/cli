@@ -18,16 +18,8 @@ type Client struct {
 func NewClient(authToken string) *Client {
 
 
-	// disable http2 because it appears to be very slow,
-	// to the point of making image upload unusable
-	htClone := http.DefaultTransport.(*http.Transport).Clone()
-	htClone.ForceAttemptHTTP2 = false
-	htClone.TLSClientConfig.NextProtos = []string{"http/1.1"}
-
 	return &Client{
-		HttpClient: &http.Client{
-			Transport: htClone,
-		},
+		HttpClient: http.DefaultClient,
 		AuthToken:  authToken,
 	}
 }
@@ -40,6 +32,9 @@ func (c *Client) Do(req *http.Request, response interface{}) error {
 
 	req.URL.Host = "api.kraudcloud.com"
 	req.URL.Scheme = "https"
+
+	// req.URL.Host = "localhost:3804"
+	// req.URL.Scheme = "http"
 
 	req.Header.Set("Authorization", "Bearer "+c.AuthToken)
 
@@ -68,6 +63,7 @@ func (c *Client) Do(req *http.Request, response interface{}) error {
 		}
 		return fmt.Errorf("%s", resp.Status)
 	}
+
 
 	if response != nil {
 		err := json.NewDecoder(resp.Body).Decode(response)

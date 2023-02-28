@@ -21,6 +21,7 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"strings"
 
 	//dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
@@ -206,6 +207,13 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 				uint64(v.size),
 			)
 			if err != nil {
+
+				if strings.Contains(err.Error(), "Conflict") {
+					return
+				}
+
+
+				fmt.Println()
 				panic(err)
 			}
 
