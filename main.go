@@ -11,6 +11,7 @@ import (
 var log = logrus.New()
 
 var COMPOSE_FILENAME string
+var USER_CONTEXT string
 
 func main() {
 
@@ -30,8 +31,10 @@ func main() {
 	root.AddCommand(imagePushCMD())
 	root.AddCommand(setupCMD())
 	root.AddCommand(eventsCMD())
+	root.AddCommand(tokenCMD())
 
 	root.PersistentFlags().StringVarP(&COMPOSE_FILENAME, "file", "f", "docker-compose.yml", "docker-compose.yml file")
+	root.PersistentFlags().StringVarP(&USER_CONTEXT, "context", "c", "default", "user context")
 
 	defer func() {
 		if r := recover(); r != nil {

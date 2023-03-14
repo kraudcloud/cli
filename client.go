@@ -27,12 +27,23 @@ func API() *api.Client {
 				log.Fatal(err)
 			}
 
-			i, err := kr.Get("token")
+			key := "token"
+			if USER_CONTEXT != "default" {
+				key = fmt.Sprintf("%s:%s", USER_CONTEXT, key)
+			}
+
+			i, err := kr.Get(key)
 			if err != nil {
+
+				context := ""
+				if USER_CONTEXT != "default" {
+					context = fmt.Sprintf(" -c %s", USER_CONTEXT)
+				}
+
 				fmt.Fprintf(os.Stderr,
 					"No token available.\n"+
-						"Go to https://kraudcloud.com/profile and create a token, then set with `kra login <token>`\n"+
-						"Or set the KR_ACCESS_TOKEN environment variable.\n")
+						"Go to https://kraudcloud.com/profile and create a token, then set with `kra%s login <token>`\n"+
+						"Or set the KR_ACCESS_TOKEN environment variable.\n", context)
 				os.Exit(1)
 			}
 
