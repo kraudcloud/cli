@@ -8327,6 +8327,129 @@ components:
                     description: Vpc View
                     type: object
             type: object
+        kr.Deployment:
+            properties:
+                AID:
+                    type: string
+                ID:
+                    type: string
+                Name:
+                    type: string
+                Namespace:
+                    $ref: '#/components/schemas/kr.NamespaceReference'
+                Ports:
+                    items:
+                        $ref: '#/components/schemas/kr.IngressPort'
+                    type: array
+                Routes:
+                    items:
+                        $ref: '#/components/schemas/kr.IngressRoute'
+                    type: array
+            required:
+                - ID
+                - AID
+                - Name
+                - Namespace
+            type: object
+        kr.IngressDomain:
+            properties:
+                AcmeEnabled:
+                    type: boolean
+                AcmeError:
+                    type: string
+                AutoHttps:
+                    type: boolean
+                CertificateProvisioned:
+                    type: boolean
+                Domain:
+                    type: string
+                ID:
+                    type: string
+                Verified:
+                    type: boolean
+            required:
+                - ID
+                - Domain
+            type: object
+        kr.IngressPort:
+            properties:
+                ID:
+                    type: string
+            required:
+                - ID
+            type: object
+        kr.IngressRoute:
+            properties:
+                Domain:
+                    $ref: '#/components/schemas/kr.IngressDomain'
+                ID:
+                    type: string
+                Path:
+                    type: string
+                VpcAddress:
+                    type: string
+            required:
+                - ID
+                - Path
+                - Domain
+            type: object
+        kr.Namespace:
+            properties:
+                AID:
+                    type: string
+                ID:
+                    type: string
+                Name:
+                    type: string
+            required:
+                - ID
+                - AID
+                - Name
+            type: object
+        kr.NamespaceOverview:
+            properties:
+                AID:
+                    type: string
+                Annotations:
+                    additionalProperties:
+                        type: string
+                    type: object
+                App:
+                    $ref: '#/components/schemas/kraud.AppOverview'
+                Deployments:
+                    items:
+                        $ref: '#/components/schemas/kr.Deployment'
+                    type: array
+                ID:
+                    type: string
+                Labels:
+                    additionalProperties:
+                        type: string
+                    type: object
+                Name:
+                    type: string
+                Volumes:
+                    items:
+                        $ref: '#/components/schemas/kr.Volume'
+                    type: array
+            required:
+                - ID
+                - AID
+                - Name
+                - Volumes
+                - Deployments
+                - Labels
+                - Annotations
+            type: object
+        kr.NamespaceReference:
+            properties:
+                AID:
+                    type: string
+                ID:
+                    type: string
+                Name:
+                    type: string
+            type: object
         kr.VmmContainerReport:
             properties:
                 ExitCode:
@@ -8343,6 +8466,27 @@ components:
             properties:
                 Reason:
                     type: string
+            type: object
+        kr.Volume:
+            properties:
+                Class:
+                    type: string
+                ID:
+                    type: string
+                Name:
+                    type: string
+                Namespace:
+                    $ref: '#/components/schemas/kr.NamespaceReference'
+                Size:
+                    format: uint64
+                    type: integer
+            required:
+                - ID
+                - AID
+                - Name
+                - Namespace
+                - Class
+                - Size
             type: object
         kraud.AppOverview:
             properties:
@@ -8497,6 +8641,36 @@ components:
             items:
                 $ref: '#/components/schemas/kraud.Feed'
             type: array
+        kraud.IdentityProvider:
+            properties:
+                id:
+                    type: string
+                idp_cert:
+                    type: string
+                idp_metdata:
+                    type: string
+                name:
+                    type: string
+                namespace:
+                    type: string
+                protocol:
+                    type: string
+                svc_metadata:
+                    type: string
+            required:
+                - protocol
+                - name
+                - namespace
+            type: object
+        kraud.IdentityProviderList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/kraud.IdentityProvider'
+                    type: array
+            required:
+                - items
+            type: object
         kraud.LaunchAppResponse:
             properties:
                 launch_id:
@@ -10083,6 +10257,34 @@ paths:
                             schema:
                                 type: object
                     description: OK
+    /apis/kr/v1/deployments/by-id/{id}/restart:
+        post:
+            operationId: krRestartDeploymentByID
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                204:
+                    description: Done
+    /apis/kr/v1/namespaces/by-name/{name}/overview.json:
+        get:
+            operationId: getNamespaceOverviewByName
+            parameters:
+                - in: path
+                  name: name
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kr.NamespaceOverview'
+                    description: OK
     /apis/kraudcloud.com/v1:
         get:
             operationId: getKraudcloudV1APIResources
@@ -10264,6 +10466,93 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/kraud.AppVersionList'
+                    description: OK
+    /apis/kraudcloud.com/v1/idp:
+        get:
+            operationId: idpList
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kraud.IdentityProviderList'
+                    description: OK
+        post:
+            operationId: idpCreate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/kraud.IdentityProvider'
+                required: true
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kraud.IdentityProvider'
+                    description: OK
+    /apis/kraudcloud.com/v1/idp/{id}:
+        delete:
+            operationId: idpDelete
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                204:
+                    description: Deleted
+        get:
+            operationId: idpInspect
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kraud.IdentityProvider'
+                    description: OK
+    /apis/kraudcloud.com/v1/idp/{id}/saml/metadata:
+        get:
+            operationId: idpGetSamlMetadata
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    description: OK
+    /apis/kraudcloud.com/v1/idp/{id}/saml/sso:
+        get:
+            operationId: idpGetSamlSso
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    description: OK
+        post:
+            operationId: idpPostSamlSso
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
                     description: OK
     /apis/kraudcloud.com/v1/images:
         get:

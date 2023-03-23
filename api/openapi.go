@@ -5024,6 +5024,69 @@ type KrCradleState struct {
 	V *map[string]interface{} `json:"V,omitempty"`
 }
 
+// KrDeployment defines model for kr.Deployment.
+type KrDeployment struct {
+	AID       string               `json:"AID"`
+	ID        string               `json:"ID"`
+	Name      string               `json:"Name"`
+	Namespace KrNamespaceReference `json:"Namespace"`
+	Ports     []KrIngressPort      `json:"Ports,omitempty"`
+	Routes    []KrIngressRoute     `json:"Routes,omitempty"`
+}
+
+// KrIngressDomain defines model for kr.IngressDomain.
+type KrIngressDomain struct {
+	AcmeEnabled            *bool   `json:"AcmeEnabled,omitempty"`
+	AcmeError              *string `json:"AcmeError,omitempty"`
+	AutoHTTPS              *bool   `json:"AutoHttps,omitempty"`
+	CertificateProvisioned *bool   `json:"CertificateProvisioned,omitempty"`
+	Domain                 string  `json:"Domain"`
+	ID                     string  `json:"ID"`
+	Verified               *bool   `json:"Verified,omitempty"`
+}
+
+// KrIngressPort defines model for kr.IngressPort.
+type KrIngressPort struct {
+	ID string `json:"ID"`
+}
+
+// KrIngressRoute defines model for kr.IngressRoute.
+type KrIngressRoute struct {
+	Domain     KrIngressDomain `json:"Domain"`
+	ID         string          `json:"ID"`
+	Path       string          `json:"Path"`
+	VpcAddress *string         `json:"VpcAddress,omitempty"`
+}
+
+// KrNamespaceOverview defines model for kr.NamespaceOverview.
+type KrNamespaceOverview struct {
+	AID         string                          `json:"AID"`
+	Annotations KrNamespaceOverview_Annotations `json:"Annotations"`
+	App         *KraudAppOverview               `json:"App,omitempty"`
+	Deployments []KrDeployment                  `json:"Deployments"`
+	ID          string                          `json:"ID"`
+	Labels      KrNamespaceOverview_Labels      `json:"Labels"`
+	Name        string                          `json:"Name"`
+	Volumes     []KrVolume                      `json:"Volumes"`
+}
+
+// KrNamespaceOverview_Annotations defines model for KrNamespaceOverview.Annotations.
+type KrNamespaceOverview_Annotations struct {
+	AdditionalProperties map[string]string `json:"-"`
+}
+
+// KrNamespaceOverview_Labels defines model for KrNamespaceOverview.Labels.
+type KrNamespaceOverview_Labels struct {
+	AdditionalProperties map[string]string `json:"-"`
+}
+
+// KrNamespaceReference defines model for kr.NamespaceReference.
+type KrNamespaceReference struct {
+	AID  *string `json:"AID,omitempty"`
+	ID   *string `json:"ID,omitempty"`
+	Name *string `json:"Name,omitempty"`
+}
+
 // KrVmmContainerReport defines model for kr.VmmContainerReport.
 type KrVmmContainerReport struct {
 	ExitCode *int    `json:"ExitCode,omitempty"`
@@ -5035,6 +5098,15 @@ type KrVmmContainerReport struct {
 // KrVmmPodReport defines model for kr.VmmPodReport.
 type KrVmmPodReport struct {
 	Reason *string `json:"Reason,omitempty"`
+}
+
+// KrVolume defines model for kr.Volume.
+type KrVolume struct {
+	Class     string               `json:"Class"`
+	ID        string               `json:"ID"`
+	Name      string               `json:"Name"`
+	Namespace KrNamespaceReference `json:"Namespace"`
+	Size      uint64               `json:"Size"`
 }
 
 // KraudAppOverview defines model for kraud.AppOverview.
@@ -5132,6 +5204,22 @@ type KraudFeed struct {
 
 // KraudFeedList defines model for kraud.FeedList.
 type KraudFeedList []KraudFeed
+
+// KraudIdentityProvider defines model for kraud.IdentityProvider.
+type KraudIdentityProvider struct {
+	ID          *string `json:"id,omitempty"`
+	IdpCert     *string `json:"idp_cert,omitempty"`
+	IdpMetdata  *string `json:"idp_metdata,omitempty"`
+	Name        string  `json:"name"`
+	Namespace   string  `json:"namespace"`
+	Protocol    string  `json:"protocol"`
+	SvcMetadata *string `json:"svc_metadata,omitempty"`
+}
+
+// KraudIdentityProviderList defines model for kraud.IdentityProviderList.
+type KraudIdentityProviderList struct {
+	Items []KraudIdentityProvider `json:"items"`
+}
 
 // KraudLaunchAppResponse defines model for kraud.LaunchAppResponse.
 type KraudLaunchAppResponse struct {
@@ -6532,6 +6620,9 @@ type GetFeedAppVersionsParams struct {
 	Tail *int `json:"tail,omitempty"`
 }
 
+// IdpCreateJSONBody defines parameters for IdpCreate.
+type IdpCreateJSONBody KraudIdentityProvider
+
 // CreateImageJSONBody defines parameters for CreateImage.
 type CreateImageJSONBody struct {
 	Architecture string                `json:"Architecture"`
@@ -7591,6 +7682,14 @@ func (LaunchAppJSONRequestBody) Bind(*http.Request) error {
 	return nil
 }
 
+// IdpCreateJSONRequestBody defines body for IdpCreate for application/json ContentType.
+type IdpCreateJSONRequestBody IdpCreateJSONBody
+
+// Bind implements render.Binder.
+func (IdpCreateJSONRequestBody) Bind(*http.Request) error {
+	return nil
+}
+
 // CreateImageJSONRequestBody defines body for CreateImage for application/json ContentType.
 type CreateImageJSONRequestBody CreateImageJSONBody
 
@@ -8189,6 +8288,16 @@ func GetVmmLaunchSpecJSON200Response(body map[string]interface{}) *Response {
 	}
 }
 
+// GetNamespaceOverviewByNameJSON200Response is a constructor method for a GetNamespaceOverviewByName response.
+// A *Response is returned with the configured status code and content type from the spec.
+func GetNamespaceOverviewByNameJSON200Response(body KrNamespaceOverview) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
 // GetKraudcloudV1apiResourcesJSON200Response is a constructor method for a GetKraudcloudV1apiResources response.
 // A *Response is returned with the configured status code and content type from the spec.
 func GetKraudcloudV1apiResourcesJSON200Response(body IoK8sApimachineryPkgApisMetaV1APIResourceList) *Response {
@@ -8262,6 +8371,36 @@ func GetFeedAppTemplateJSON200Response(body KraudAppOverview) *Response {
 // GetFeedAppVersionsJSON200Response is a constructor method for a GetFeedAppVersions response.
 // A *Response is returned with the configured status code and content type from the spec.
 func GetFeedAppVersionsJSON200Response(body KraudAppVersionList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// IdpListJSON200Response is a constructor method for a IdpList response.
+// A *Response is returned with the configured status code and content type from the spec.
+func IdpListJSON200Response(body KraudIdentityProviderList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// IdpCreateJSON200Response is a constructor method for a IdpCreate response.
+// A *Response is returned with the configured status code and content type from the spec.
+func IdpCreateJSON200Response(body KraudIdentityProvider) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// IdpInspectJSON200Response is a constructor method for a IdpInspect response.
+// A *Response is returned with the configured status code and content type from the spec.
+func IdpInspectJSON200Response(body KraudIdentityProvider) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,
@@ -11514,6 +11653,112 @@ func (a *K8sStorageClass_Parameters) UnmarshalJSON(b []byte) error {
 
 // Override default JSON handling for K8sStorageClass_Parameters to handle AdditionalProperties
 func (a K8sStorageClass_Parameters) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
+
+// Getter for additional properties for KrNamespaceOverview_Annotations. Returns the specified
+// element and whether it was found
+func (a KrNamespaceOverview_Annotations) Get(fieldName string) (value string, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for KrNamespaceOverview_Annotations
+func (a *KrNamespaceOverview_Annotations) Set(fieldName string, value string) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]string)
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for KrNamespaceOverview_Annotations to handle AdditionalProperties
+func (a *KrNamespaceOverview_Annotations) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]string)
+		for fieldName, fieldBuf := range object {
+			var fieldVal string
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for KrNamespaceOverview_Annotations to handle AdditionalProperties
+func (a KrNamespaceOverview_Annotations) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
+
+// Getter for additional properties for KrNamespaceOverview_Labels. Returns the specified
+// element and whether it was found
+func (a KrNamespaceOverview_Labels) Get(fieldName string) (value string, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for KrNamespaceOverview_Labels
+func (a *KrNamespaceOverview_Labels) Set(fieldName string, value string) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]string)
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for KrNamespaceOverview_Labels to handle AdditionalProperties
+func (a *KrNamespaceOverview_Labels) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]string)
+		for fieldName, fieldBuf := range object {
+			var fieldVal string
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for KrNamespaceOverview_Labels to handle AdditionalProperties
+func (a KrNamespaceOverview_Labels) MarshalJSON() ([]byte, error) {
 	var err error
 	object := make(map[string]json.RawMessage)
 

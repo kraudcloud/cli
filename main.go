@@ -11,9 +11,16 @@ import (
 var log = logrus.New()
 
 var COMPOSE_FILENAME string
+var COMPOSE_FILENAME_DEFAULT string = "docker-compose.yml"
 var USER_CONTEXT string
 
 func main() {
+
+	_, err := os.Stat("docker-compose.yml")
+	if err != nil {
+		COMPOSE_FILENAME_DEFAULT = "docker-compose.yaml"
+	}
+
 
 	root := cobra.Command{
 		Use:     "kra [command]",
@@ -32,8 +39,9 @@ func main() {
 	root.AddCommand(setupCMD())
 	root.AddCommand(eventsCMD())
 	root.AddCommand(tokenCMD())
+	root.AddCommand(idpCMD())
 
-	root.PersistentFlags().StringVarP(&COMPOSE_FILENAME, "file", "f", "docker-compose.yml", "docker-compose.yml file")
+	root.PersistentFlags().StringVarP(&COMPOSE_FILENAME, "file", "f", COMPOSE_FILENAME_DEFAULT, "docker-compose.yml file")
 	root.PersistentFlags().StringVarP(&USER_CONTEXT, "context", "c", "default", "user context")
 
 	defer func() {
