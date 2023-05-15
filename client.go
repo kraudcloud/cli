@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/99designs/keyring"
-	"github.com/kraudcloud/cli/api"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/kraudcloud/cli/api"
 )
 
 var createApiOnce sync.Once
@@ -20,9 +20,7 @@ func API() *api.Client {
 		token := os.Getenv("KR_ACCESS_TOKEN")
 		if token == "" {
 
-			kr, err := keyring.Open(keyring.Config{
-				ServiceName: "kraudcloud",
-			})
+			kr, err := openKeyring()
 			if err != nil {
 				log.Fatal(err)
 			}
