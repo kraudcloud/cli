@@ -40,6 +40,60 @@ components:
                 - apiVersion
                 - kind
             type: object
+        BillingAddress:
+            properties:
+                address:
+                    type: string
+                city:
+                    type: string
+                company_name:
+                    type: string
+                country:
+                    type: string
+                    x-go-type: CountryCode
+                email:
+                    format: email
+                    type: string
+                    x-go-type: string
+                state:
+                    type: string
+                vat_number:
+                    type: string
+                    x-go-type: VATNumber
+                zip:
+                    type: string
+            required:
+                - company_name
+                - email
+                - address
+                - city
+                - country
+                - zip
+                - state
+            type: object
+        BillingAddressWithContracts:
+            properties:
+                address:
+                    $ref: '#/components/schemas/BillingAddress'
+                contracts:
+                    items:
+                        $ref: '#/components/schemas/BillingContract'
+                    type: array
+            type: object
+        BillingContract:
+            properties:
+                amount:
+                    format: uint64
+                    type: integer
+                currency:
+                    type: string
+                name:
+                    type: string
+            required:
+                - name
+                - currency
+                - amount
+            type: object
         BuildCache:
             properties:
                 CreatedAt:
@@ -1863,6 +1917,44 @@ components:
                 - key
                 - ca
             type: object
+        Kraud.Container:
+            properties:
+                AID:
+                    type: string
+                Command:
+                    items:
+                        type: string
+                    type: array
+                Entrypoint:
+                    items:
+                        type: string
+                    type: array
+                Env:
+                    additionalProperties:
+                        type: string
+                    type: object
+                ID:
+                    type: string
+                ImageName:
+                    type: string
+                Name:
+                    type: string
+                Tty:
+                    type: boolean
+                VolumeMounts:
+                    items:
+                        $ref: '#/components/schemas/Kraud.VolumeMount'
+                    type: array
+            required:
+                - AID
+                - Name
+                - ImageName
+                - Entrypoint
+                - Command
+                - Env
+                - Tty
+                - VolumeMounts
+            type: object
         Kraud.CreateImageResponse:
             properties:
                 created:
@@ -1871,6 +1963,46 @@ components:
                     items:
                         $ref: '#/components/schemas/Kraud.ImageName'
                     type: array
+            type: object
+        Kraud.Deployment:
+            properties:
+                AID:
+                    type: string
+                App:
+                    properties:
+                        Config:
+                            type: string
+                        ID:
+                            type: string
+                    required:
+                        - ID
+                        - Config
+                    type: object
+                ID:
+                    type: string
+                Name:
+                    type: string
+                Namespace:
+                    type: string
+                Pods:
+                    items:
+                        $ref: '#/components/schemas/Kraud.Pod'
+                    type: array
+            required:
+                - ID
+                - AID
+                - Name
+                - Namespace
+                - Pods
+            type: object
+        Kraud.DeploymentList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/Kraud.Deployment'
+                    type: array
+            required:
+                - items
             type: object
         Kraud.Image:
             description: Image is a docker image for a specific architecture
@@ -1957,6 +2089,62 @@ components:
                 OciID:
                     type: string
             type: object
+        Kraud.Pod:
+            properties:
+                AID:
+                    type: string
+                Architecture:
+                    type: string
+                Containers:
+                    items:
+                        $ref: '#/components/schemas/Kraud.Container'
+                    type: array
+                Cpu:
+                    type: string
+                DeleteOnDeschedule:
+                    type: boolean
+                ID:
+                    type: string
+                Mem:
+                    type: string
+                Name:
+                    type: string
+                Namespace:
+                    type: string
+                Replicas:
+                    type: integer
+                Res:
+                    additionalProperties:
+                        type: string
+                    type: object
+                RestartPolicy:
+                    type: string
+                Zone:
+                    type: string
+            required:
+                - AID
+                - Name
+                - Namespace
+                - Architecture
+                - Cpu
+                - Mem
+                - Zone
+                - Res
+                - RestartPolicy
+                - DeleteOnDeschedule
+                - Containers
+                - Volumes
+                - Replicas
+            type: object
+        Kraud.PodList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/Kraud.Pod'
+                    type: array
+            required:
+                - items
+            type: object
         Kraud.TenantInfo:
             properties:
                 id:
@@ -1966,6 +2154,46 @@ components:
             required:
                 - id
                 - org
+            type: object
+        Kraud.UserRole:
+            properties:
+                description:
+                    type: string
+                id:
+                    type: string
+                name:
+                    type: string
+                scopes:
+                    items:
+                        type: string
+                    type: array
+            required:
+                - name
+                - description
+                - scopes
+            type: object
+        Kraud.UserRoleList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/Kraud.UserRole'
+                    type: array
+            required:
+                - items
+            type: object
+        Kraud.VolumeMount:
+            properties:
+                AID:
+                    type: string
+                MountPath:
+                    type: string
+                ReadOnly:
+                    type: boolean
+                SubPath:
+                    type: string
+            required:
+                - AID
+                - MountPath
             type: object
         Limit:
             description: |
@@ -8250,6 +8478,10 @@ components:
                     type: string
                 idpId:
                     type: string
+                roles:
+                    items:
+                        type: string
+                    type: array
                 status:
                     type: string
             required:
@@ -8471,6 +8703,9 @@ components:
             properties:
                 Class:
                     type: string
+                ExpiresAt:
+                    format: date-time
+                    type: string
                 ID:
                     type: string
                 Name:
@@ -8657,6 +8892,12 @@ components:
                     type: string
                 svc_metadata:
                     type: string
+                url_meta:
+                    type: string
+                url_slo:
+                    type: string
+                url_sso:
+                    type: string
             required:
                 - protocol
                 - name
@@ -8687,8 +8928,16 @@ components:
                 project_name:
                     description: The name of the project to launch the app in.
                     type: string
+                roles:
+                    description: |
+                        UUIDs of the roles to apply to the application namespace.
+                        By default, `users` and `admin` roles are applied (their respective UUIDs).
+                    items:
+                        type: string
+                    type: array
             required:
                 - project_name
+                - roles
                 - config
             type: object
         kraud.SessionInfo:
@@ -8729,6 +8978,10 @@ components:
                     type: string
                 name:
                     type: string
+                scopes:
+                    items:
+                        type: string
+                    type: array
                 user_id:
                     type: string
             required:
@@ -8737,6 +8990,7 @@ components:
                 - user_id
                 - idp_id
                 - avatar_url
+                - scopes
             type: object
         kraud.WSLaunchLog:
             description: regular log lines
@@ -10295,6 +10549,33 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/io.k8s.apimachinery.pkg.apis.meta.v1.APIResourceList'
                     description: OK
+    /apis/kraudcloud.com/v1/deployments:
+        get:
+            operationId: listKraudDeployments
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.DeploymentList'
+                    description: OK
+    /apis/kraudcloud.com/v1/deployments/{q}:
+        get:
+            operationId: inspectKraudDeployment
+            parameters:
+                - description: aid or uuid
+                  in: path
+                  name: q
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.Deployment'
+                    description: OK
     /apis/kraudcloud.com/v1/events/stream.json:
         get:
             description: Get events, one line per event
@@ -10467,93 +10748,6 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/kraud.AppVersionList'
                     description: OK
-    /apis/kraudcloud.com/v1/idp:
-        get:
-            operationId: idpList
-            responses:
-                200:
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/kraud.IdentityProviderList'
-                    description: OK
-        post:
-            operationId: idpCreate
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/kraud.IdentityProvider'
-                required: true
-            responses:
-                200:
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/kraud.IdentityProvider'
-                    description: OK
-    /apis/kraudcloud.com/v1/idp/{id}:
-        delete:
-            operationId: idpDelete
-            parameters:
-                - in: path
-                  name: id
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                204:
-                    description: Deleted
-        get:
-            operationId: idpInspect
-            parameters:
-                - in: path
-                  name: id
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                200:
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/kraud.IdentityProvider'
-                    description: OK
-    /apis/kraudcloud.com/v1/idp/{id}/saml/metadata:
-        get:
-            operationId: idpGetSamlMetadata
-            parameters:
-                - in: path
-                  name: id
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                200:
-                    description: OK
-    /apis/kraudcloud.com/v1/idp/{id}/saml/sso:
-        get:
-            operationId: idpGetSamlSso
-            parameters:
-                - in: path
-                  name: id
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                200:
-                    description: OK
-        post:
-            operationId: idpPostSamlSso
-            parameters:
-                - in: path
-                  name: id
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                200:
-                    description: OK
     /apis/kraudcloud.com/v1/images:
         get:
             operationId: listImages
@@ -10677,6 +10871,64 @@ paths:
                         $ref: '#/components/schemas/Kraud.Layer'
                 "401":
                     description: Unauthorized
+    /apis/kraudcloud.com/v1/pods:
+        get:
+            operationId: listKraudPods
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.PodList'
+                    description: OK
+    /apis/kraudcloud.com/v1/pods/{q}:
+        get:
+            operationId: inspectKraudPod
+            parameters:
+                - description: aid or uuid
+                  in: path
+                  name: q
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.Pod'
+                    description: OK
+        put:
+            operationId: editKraudPod
+            parameters:
+                - description: aid or uuid
+                  in: path
+                  name: q
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Kraud.Pod'
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.Pod'
+                    description: OK
+    /apis/kraudcloud.com/v1/roles:
+        get:
+            operationId: listRoles
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.UserRoleList'
+                    description: OK
     /apis/kraudcloud.com/v1/sessions/authorize:
         get:
             operationId: authorizeSession
@@ -10719,6 +10971,28 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/kraud.SessionInfo'
                     description: OK
+    /apis/kraudcloud.com/v1/tenant/billing:
+        get:
+            operationId: getBillingInfo
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BillingAddressWithContracts'
+        put:
+            operationId: updateBillingInfo
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/BillingAddress'
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BillingAddress'
     /apis/kraudcloud.com/v1/tenant/tel/verify/{tel}/send:
         post:
             operationId: sendTelCode
@@ -10883,6 +11157,32 @@ paths:
                     description: Valid code, redirecting to signup
                 404:
                     description: Code not found (or expired)
+    /apis/kraudcloud.com/v1/users/{uuid}/roles:
+        patch:
+            operationId: updateUserRoles
+            parameters:
+                - in: path
+                  name: uuid
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            properties:
+                                roles:
+                                    items:
+                                        type: string
+                                    type: array
+                            required:
+                                - roles
+                            type: object
+                description: roles to update
+                required: true
+            responses:
+                201:
+                    description: Updated
     /apis/kraudcloud.com/v1/users/{uuid}/token/{name}/rotate:
         post:
             operationId: rotateUserApiToken
@@ -14647,6 +14947,116 @@ paths:
             summary: Get system information
             tags:
                 - System
+    /kr1/idp:
+        get:
+            operationId: idpList
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kraud.IdentityProviderList'
+                    description: OK
+        post:
+            operationId: idpCreate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/kraud.IdentityProvider'
+                required: true
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kraud.IdentityProvider'
+                    description: OK
+    /kr1/idp/{id}:
+        delete:
+            operationId: idpDelete
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                204:
+                    description: Deleted
+        get:
+            operationId: idpInspect
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kraud.IdentityProvider'
+                    description: OK
+    /kr1/idp/{id}/saml/metadata:
+        get:
+            operationId: idpGetSamlMetadata
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    description: OK
+    /kr1/idp/{id}/saml/slo:
+        get:
+            operationId: idpGetSamlSlo
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    description: OK
+        post:
+            operationId: idpPostSamlSlo
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    description: OK
+    /kr1/idp/{id}/saml/sso:
+        get:
+            operationId: idpGetSamlSso
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    description: OK
+        post:
+            operationId: idpPostSamlSso
+            parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    description: OK
     /networks:
         get:
             description: |

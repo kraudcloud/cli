@@ -382,6 +382,31 @@ type AuthConfig struct {
 	Username      *string `json:"username,omitempty"`
 }
 
+// BillingAddress defines model for BillingAddress.
+type BillingAddress struct {
+	Address     string      `json:"address"`
+	City        string      `json:"city"`
+	CompanyName string      `json:"company_name"`
+	Country     CountryCode `json:"country"`
+	Email       string      `json:"email"`
+	State       string      `json:"state"`
+	VatNumber   *VATNumber  `json:"vat_number,omitempty"`
+	Zip         string      `json:"zip"`
+}
+
+// BillingAddressWithContracts defines model for BillingAddressWithContracts.
+type BillingAddressWithContracts struct {
+	Address   *BillingAddress   `json:"address,omitempty"`
+	Contracts []BillingContract `json:"contracts,omitempty"`
+}
+
+// BillingContract defines model for BillingContract.
+type BillingContract struct {
+	Amount   uint64 `json:"amount"`
+	Currency string `json:"currency"`
+	Name     string `json:"name"`
+}
+
 // ClusterInfo represents information about the swarm as is returned by the
 // "/info" endpoint. Join-tokens are not included.
 type ClusterInfo struct {
@@ -1473,11 +1498,47 @@ type KraudCertificateGenerateResponse struct {
 	Key  string `json:"key"`
 }
 
+// KraudContainer defines model for Kraud.Container.
+type KraudContainer struct {
+	AID          string             `json:"AID"`
+	Command      []string           `json:"Command"`
+	Entrypoint   []string           `json:"Entrypoint"`
+	Env          KraudContainer_Env `json:"Env"`
+	ID           *string            `json:"ID,omitempty"`
+	ImageName    string             `json:"ImageName"`
+	Name         string             `json:"Name"`
+	Tty          bool               `json:"Tty"`
+	VolumeMounts []KraudVolumeMount `json:"VolumeMounts"`
+}
+
+// KraudContainer_Env defines model for KraudContainer.Env.
+type KraudContainer_Env struct {
+	AdditionalProperties map[string]string `json:"-"`
+}
+
 // KraudCreateImageResponse defines model for Kraud.CreateImageResponse.
 type KraudCreateImageResponse struct {
 	// Image is a named docker image
 	Created *KraudImageName  `json:"created,omitempty"`
 	Renamed []KraudImageName `json:"renamed,omitempty"`
+}
+
+// KraudDeployment defines model for Kraud.Deployment.
+type KraudDeployment struct {
+	AID string `json:"AID"`
+	App *struct {
+		Config string `json:"Config"`
+		ID     string `json:"ID"`
+	} `json:"App,omitempty"`
+	ID        string     `json:"ID"`
+	Name      string     `json:"Name"`
+	Namespace string     `json:"Namespace"`
+	Pods      []KraudPod `json:"Pods"`
+}
+
+// KraudDeploymentList defines model for Kraud.DeploymentList.
+type KraudDeploymentList struct {
+	Items []KraudDeployment `json:"items"`
 }
 
 // Image is a docker image for a specific architecture
@@ -1524,10 +1585,58 @@ type KraudLayerReference struct {
 	OciID *string `json:"OciID,omitempty"`
 }
 
+// KraudPod defines model for Kraud.Pod.
+type KraudPod struct {
+	AID                string           `json:"AID"`
+	Architecture       string           `json:"Architecture"`
+	Containers         []KraudContainer `json:"Containers"`
+	CPU                string           `json:"Cpu"`
+	DeleteOnDeschedule bool             `json:"DeleteOnDeschedule"`
+	ID                 *string          `json:"ID,omitempty"`
+	Mem                string           `json:"Mem"`
+	Name               string           `json:"Name"`
+	Namespace          string           `json:"Namespace"`
+	Replicas           int              `json:"Replicas"`
+	Res                KraudPod_Res     `json:"Res"`
+	RestartPolicy      string           `json:"RestartPolicy"`
+	Zone               string           `json:"Zone"`
+}
+
+// KraudPod_Res defines model for KraudPod.Res.
+type KraudPod_Res struct {
+	AdditionalProperties map[string]string `json:"-"`
+}
+
+// KraudPodList defines model for Kraud.PodList.
+type KraudPodList struct {
+	Items []KraudPod `json:"items"`
+}
+
 // KraudTenantInfo defines model for Kraud.TenantInfo.
 type KraudTenantInfo struct {
 	ID  string `json:"id"`
 	Org string `json:"org"`
+}
+
+// KraudUserRole defines model for Kraud.UserRole.
+type KraudUserRole struct {
+	Description string   `json:"description"`
+	ID          *string  `json:"id,omitempty"`
+	Name        string   `json:"name"`
+	Scopes      []string `json:"scopes"`
+}
+
+// KraudUserRoleList defines model for Kraud.UserRoleList.
+type KraudUserRoleList struct {
+	Items []KraudUserRole `json:"items"`
+}
+
+// KraudVolumeMount defines model for Kraud.VolumeMount.
+type KraudVolumeMount struct {
+	AID       string  `json:"AID"`
+	MountPath string  `json:"MountPath"`
+	ReadOnly  *bool   `json:"ReadOnly,omitempty"`
+	SubPath   *string `json:"SubPath,omitempty"`
 }
 
 // An object describing a limit on resources which can be requested by a task.
@@ -4965,10 +5074,11 @@ type K8sUserList struct {
 
 // K8sUserSpec defines model for k8s.UserSpec.
 type K8sUserSpec struct {
-	DisplayName string  `json:"displayName"`
-	Email       string  `json:"email"`
-	IdpID       *string `json:"idpId,omitempty"`
-	Status      *string `json:"status,omitempty"`
+	DisplayName string   `json:"displayName"`
+	Email       string   `json:"email"`
+	IdpID       *string  `json:"idpId,omitempty"`
+	Roles       []string `json:"roles,omitempty"`
+	Status      *string  `json:"status,omitempty"`
 }
 
 // Volume represents a named volume in a pod that may be accessed by any container in the pod.
@@ -5103,6 +5213,7 @@ type KrVmmPodReport struct {
 // KrVolume defines model for kr.Volume.
 type KrVolume struct {
 	Class     string               `json:"Class"`
+	ExpiresAt *time.Time           `json:"ExpiresAt,omitempty"`
 	ID        string               `json:"ID"`
 	Name      string               `json:"Name"`
 	Namespace KrNamespaceReference `json:"Namespace"`
@@ -5214,6 +5325,9 @@ type KraudIdentityProvider struct {
 	Namespace   string  `json:"namespace"`
 	Protocol    string  `json:"protocol"`
 	SvcMetadata *string `json:"svc_metadata,omitempty"`
+	URLMeta     *string `json:"url_meta,omitempty"`
+	URLSlo      *string `json:"url_slo,omitempty"`
+	URLSso      *string `json:"url_sso,omitempty"`
 }
 
 // KraudIdentityProviderList defines model for kraud.IdentityProviderList.
@@ -5232,6 +5346,10 @@ type KraudLaunchSettings struct {
 
 	// The name of the project to launch the app in.
 	ProjectName string `json:"project_name"`
+
+	// UUIDs of the roles to apply to the application namespace.
+	// By default, `users` and `admin` roles are applied (their respective UUIDs).
+	Roles []string `json:"roles"`
 }
 
 // KraudLaunchSettings_Config defines model for KraudLaunchSettings.Config.
@@ -5255,11 +5373,12 @@ type KraudSessionTenantInfo struct {
 
 // KraudSessionUserInfo defines model for kraud.SessionUserInfo.
 type KraudSessionUserInfo struct {
-	AvatarURL string `json:"avatar_url"`
-	Email     string `json:"email"`
-	IdpID     string `json:"idp_id"`
-	Name      string `json:"name"`
-	UserID    string `json:"user_id"`
+	AvatarURL string   `json:"avatar_url"`
+	Email     string   `json:"email"`
+	IdpID     string   `json:"idp_id"`
+	Name      string   `json:"name"`
+	Scopes    []string `json:"scopes"`
+	UserID    string   `json:"user_id"`
 }
 
 // regular log lines
@@ -6620,9 +6739,6 @@ type GetFeedAppVersionsParams struct {
 	Tail *int `json:"tail,omitempty"`
 }
 
-// IdpCreateJSONBody defines parameters for IdpCreate.
-type IdpCreateJSONBody KraudIdentityProvider
-
 // CreateImageJSONBody defines parameters for CreateImage.
 type CreateImageJSONBody struct {
 	Architecture string                `json:"Architecture"`
@@ -6641,6 +6757,9 @@ type CreateLayerParams struct {
 	Maxsize uint64 `json:"maxsize"`
 }
 
+// EditKraudPodJSONBody defines parameters for EditKraudPod.
+type EditKraudPodJSONBody KraudPod
+
 // AuthorizeSessionParams defines parameters for AuthorizeSession.
 type AuthorizeSessionParams struct {
 	// ingress route id
@@ -6649,6 +6768,9 @@ type AuthorizeSessionParams struct {
 	// URL to redirect to after successful login, allows fully transparent authentication
 	ReturnTo *string `json:"return_to,omitempty"`
 }
+
+// UpdateBillingInfoJSONBody defines parameters for UpdateBillingInfo.
+type UpdateBillingInfoJSONBody BillingAddress
 
 // SendTelCodeJSONBody defines parameters for SendTelCode.
 type SendTelCodeJSONBody struct {
@@ -6663,6 +6785,11 @@ type ListUsersParams struct {
 
 // CreateUserJSONBody defines parameters for CreateUser.
 type CreateUserJSONBody K8sUserSpec
+
+// UpdateUserRolesJSONBody defines parameters for UpdateUserRoles.
+type UpdateUserRolesJSONBody struct {
+	Roles []string `json:"roles"`
+}
 
 // ListIngressClassesParams defines parameters for ListIngressClasses.
 type ListIngressClassesParams struct {
@@ -7278,6 +7405,9 @@ type DockerImageTagParams struct {
 	Tag *string `json:"tag,omitempty"`
 }
 
+// IdpCreateJSONBody defines parameters for IdpCreate.
+type IdpCreateJSONBody KraudIdentityProvider
+
 // DockerNetworkListParams defines parameters for DockerNetworkList.
 type DockerNetworkListParams struct {
 	// JSON encoded value of the filters (a `map[string][]string`) to process
@@ -7682,19 +7812,27 @@ func (LaunchAppJSONRequestBody) Bind(*http.Request) error {
 	return nil
 }
 
-// IdpCreateJSONRequestBody defines body for IdpCreate for application/json ContentType.
-type IdpCreateJSONRequestBody IdpCreateJSONBody
-
-// Bind implements render.Binder.
-func (IdpCreateJSONRequestBody) Bind(*http.Request) error {
-	return nil
-}
-
 // CreateImageJSONRequestBody defines body for CreateImage for application/json ContentType.
 type CreateImageJSONRequestBody CreateImageJSONBody
 
 // Bind implements render.Binder.
 func (CreateImageJSONRequestBody) Bind(*http.Request) error {
+	return nil
+}
+
+// EditKraudPodJSONRequestBody defines body for EditKraudPod for application/json ContentType.
+type EditKraudPodJSONRequestBody EditKraudPodJSONBody
+
+// Bind implements render.Binder.
+func (EditKraudPodJSONRequestBody) Bind(*http.Request) error {
+	return nil
+}
+
+// UpdateBillingInfoJSONRequestBody defines body for UpdateBillingInfo for application/json ContentType.
+type UpdateBillingInfoJSONRequestBody UpdateBillingInfoJSONBody
+
+// Bind implements render.Binder.
+func (UpdateBillingInfoJSONRequestBody) Bind(*http.Request) error {
 	return nil
 }
 
@@ -7714,6 +7852,14 @@ func (CreateUserJSONRequestBody) Bind(*http.Request) error {
 	return nil
 }
 
+// UpdateUserRolesJSONRequestBody defines body for UpdateUserRoles for application/json ContentType.
+type UpdateUserRolesJSONRequestBody UpdateUserRolesJSONBody
+
+// Bind implements render.Binder.
+func (UpdateUserRolesJSONRequestBody) Bind(*http.Request) error {
+	return nil
+}
+
 // DockerConfigCreateJSONRequestBody defines body for DockerConfigCreate for application/json ContentType.
 type DockerConfigCreateJSONRequestBody DockerConfigCreateJSONBody
 
@@ -7722,6 +7868,14 @@ type DockerConfigUpdateJSONRequestBody DockerConfigUpdateJSONBody
 
 // DockerContainerCreateJSONRequestBody defines body for DockerContainerCreate for application/json ContentType.
 type DockerContainerCreateJSONRequestBody DockerContainerCreateJSONBody
+
+// IdpCreateJSONRequestBody defines body for IdpCreate for application/json ContentType.
+type IdpCreateJSONRequestBody IdpCreateJSONBody
+
+// Bind implements render.Binder.
+func (IdpCreateJSONRequestBody) Bind(*http.Request) error {
+	return nil
+}
 
 // DockerSecretCreateJSONRequestBody defines body for DockerSecretCreate for application/json ContentType.
 type DockerSecretCreateJSONRequestBody DockerSecretCreateJSONBody
@@ -8308,6 +8462,26 @@ func GetKraudcloudV1apiResourcesJSON200Response(body IoK8sApimachineryPkgApisMet
 	}
 }
 
+// ListKraudDeploymentsJSON200Response is a constructor method for a ListKraudDeployments response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListKraudDeploymentsJSON200Response(body KraudDeploymentList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// InspectKraudDeploymentJSON200Response is a constructor method for a InspectKraudDeployment response.
+// A *Response is returned with the configured status code and content type from the spec.
+func InspectKraudDeploymentJSON200Response(body KraudDeployment) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
 // GetEventsStreamJSON200Response is a constructor method for a GetEventsStream response.
 // A *Response is returned with the configured status code and content type from the spec.
 func GetEventsStreamJSON200Response(body KraudEvent) *Response {
@@ -8378,36 +8552,6 @@ func GetFeedAppVersionsJSON200Response(body KraudAppVersionList) *Response {
 	}
 }
 
-// IdpListJSON200Response is a constructor method for a IdpList response.
-// A *Response is returned with the configured status code and content type from the spec.
-func IdpListJSON200Response(body KraudIdentityProviderList) *Response {
-	return &Response{
-		body:        body,
-		Code:        200,
-		contentType: "application/json",
-	}
-}
-
-// IdpCreateJSON200Response is a constructor method for a IdpCreate response.
-// A *Response is returned with the configured status code and content type from the spec.
-func IdpCreateJSON200Response(body KraudIdentityProvider) *Response {
-	return &Response{
-		body:        body,
-		Code:        200,
-		contentType: "application/json",
-	}
-}
-
-// IdpInspectJSON200Response is a constructor method for a IdpInspect response.
-// A *Response is returned with the configured status code and content type from the spec.
-func IdpInspectJSON200Response(body KraudIdentityProvider) *Response {
-	return &Response{
-		body:        body,
-		Code:        200,
-		contentType: "application/json",
-	}
-}
-
 // ListImagesJSON200Response is a constructor method for a ListImages response.
 // A *Response is returned with the configured status code and content type from the spec.
 func ListImagesJSON200Response(body KraudImageNameList) *Response {
@@ -8458,9 +8602,69 @@ func ListLayersJSON200Response(body KraudLayerList) *Response {
 	}
 }
 
+// ListKraudPodsJSON200Response is a constructor method for a ListKraudPods response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListKraudPodsJSON200Response(body KraudPodList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// InspectKraudPodJSON200Response is a constructor method for a InspectKraudPod response.
+// A *Response is returned with the configured status code and content type from the spec.
+func InspectKraudPodJSON200Response(body KraudPod) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// EditKraudPodJSON200Response is a constructor method for a EditKraudPod response.
+// A *Response is returned with the configured status code and content type from the spec.
+func EditKraudPodJSON200Response(body KraudPod) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// ListRolesJSON200Response is a constructor method for a ListRoles response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListRolesJSON200Response(body KraudUserRoleList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
 // WhoamiJSON200Response is a constructor method for a Whoami response.
 // A *Response is returned with the configured status code and content type from the spec.
 func WhoamiJSON200Response(body KraudSessionInfo) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// GetBillingInfoJSON200Response is a constructor method for a GetBillingInfo response.
+// A *Response is returned with the configured status code and content type from the spec.
+func GetBillingInfoJSON200Response(body BillingAddressWithContracts) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// UpdateBillingInfoJSON200Response is a constructor method for a UpdateBillingInfo response.
+// A *Response is returned with the configured status code and content type from the spec.
+func UpdateBillingInfoJSON200Response(body BillingAddress) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,
@@ -8671,6 +8875,36 @@ func DockerImageInspectJSON200Response(body ImageInspect) *Response {
 // DockerSystemInfoJSON200Response is a constructor method for a DockerSystemInfo response.
 // A *Response is returned with the configured status code and content type from the spec.
 func DockerSystemInfoJSON200Response(body SystemInfo) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// IdpListJSON200Response is a constructor method for a IdpList response.
+// A *Response is returned with the configured status code and content type from the spec.
+func IdpListJSON200Response(body KraudIdentityProviderList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// IdpCreateJSON200Response is a constructor method for a IdpCreate response.
+// A *Response is returned with the configured status code and content type from the spec.
+func IdpCreateJSON200Response(body KraudIdentityProvider) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// IdpInspectJSON200Response is a constructor method for a IdpInspect response.
+// A *Response is returned with the configured status code and content type from the spec.
+func IdpInspectJSON200Response(body KraudIdentityProvider) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,
@@ -9745,6 +9979,112 @@ func (a *ImageSummary_Labels) UnmarshalJSON(b []byte) error {
 
 // Override default JSON handling for ImageSummary_Labels to handle AdditionalProperties
 func (a ImageSummary_Labels) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
+
+// Getter for additional properties for KraudContainer_Env. Returns the specified
+// element and whether it was found
+func (a KraudContainer_Env) Get(fieldName string) (value string, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for KraudContainer_Env
+func (a *KraudContainer_Env) Set(fieldName string, value string) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]string)
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for KraudContainer_Env to handle AdditionalProperties
+func (a *KraudContainer_Env) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]string)
+		for fieldName, fieldBuf := range object {
+			var fieldVal string
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for KraudContainer_Env to handle AdditionalProperties
+func (a KraudContainer_Env) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
+
+// Getter for additional properties for KraudPod_Res. Returns the specified
+// element and whether it was found
+func (a KraudPod_Res) Get(fieldName string) (value string, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for KraudPod_Res
+func (a *KraudPod_Res) Set(fieldName string, value string) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]string)
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for KraudPod_Res to handle AdditionalProperties
+func (a *KraudPod_Res) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]string)
+		for fieldName, fieldBuf := range object {
+			var fieldVal string
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for KraudPod_Res to handle AdditionalProperties
+func (a KraudPod_Res) MarshalJSON() ([]byte, error) {
 	var err error
 	object := make(map[string]json.RawMessage)
 

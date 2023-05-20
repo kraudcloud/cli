@@ -22,3 +22,6 @@ func (self *IoK8sApimachineryPkgUtilIntstrIntOrString) MarshalJSON() ([]byte, er
 		return json.Marshal(string(*self))
 	}
 }
+
+type Scope string
+type Scopes []Scope
