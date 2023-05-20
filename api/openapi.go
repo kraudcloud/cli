@@ -1590,14 +1590,14 @@ type KraudPod struct {
 	AID                string           `json:"AID"`
 	Architecture       string           `json:"Architecture"`
 	Containers         []KraudContainer `json:"Containers"`
-	CPU                string           `json:"Cpu"`
+	CPU                int              `json:"Cpu"`
 	DeleteOnDeschedule bool             `json:"DeleteOnDeschedule"`
 	ID                 *string          `json:"ID,omitempty"`
-	Mem                string           `json:"Mem"`
+	Mem                int              `json:"Mem"`
 	Name               string           `json:"Name"`
 	Namespace          string           `json:"Namespace"`
 	Replicas           int              `json:"Replicas"`
-	Res                KraudPod_Res     `json:"Res"`
+	Res                *KraudPod_Res    `json:"Res,omitempty"`
 	RestartPolicy      string           `json:"RestartPolicy"`
 	Zone               string           `json:"Zone"`
 }
@@ -1620,15 +1620,34 @@ type KraudTenantInfo struct {
 
 // KraudUserRole defines model for Kraud.UserRole.
 type KraudUserRole struct {
-	Description string   `json:"description"`
-	ID          *string  `json:"id,omitempty"`
-	Name        string   `json:"name"`
-	Scopes      []string `json:"scopes"`
+	Description string  `json:"description"`
+	ID          *string `json:"id,omitempty"`
+	Name        string  `json:"name"`
+	Scopes      Scopes  `json:"scopes"`
 }
 
 // KraudUserRoleList defines model for Kraud.UserRoleList.
 type KraudUserRoleList struct {
 	Items []KraudUserRole `json:"items"`
+}
+
+// KraudVolume defines model for Kraud.Volume.
+type KraudVolume struct {
+	AID          string     `json:"AID"`
+	Class        string     `json:"Class"`
+	DeletionLock *string    `json:"DeletionLock,omitempty"`
+	ExpiresAt    *time.Time `json:"ExpiresAt,omitempty"`
+	ID           *string    `json:"ID,omitempty"`
+	IOPS         *int       `json:"IOPS,omitempty"`
+	Name         string     `json:"Name"`
+	Size         int        `json:"Size"`
+	Version      *string    `json:"Version,omitempty"`
+	Zone         *string    `json:"Zone,omitempty"`
+}
+
+// KraudVolumeList defines model for Kraud.VolumeList.
+type KraudVolumeList struct {
+	Items []KraudVolume `json:"items"`
 }
 
 // KraudVolumeMount defines model for Kraud.VolumeMount.
@@ -5373,12 +5392,12 @@ type KraudSessionTenantInfo struct {
 
 // KraudSessionUserInfo defines model for kraud.SessionUserInfo.
 type KraudSessionUserInfo struct {
-	AvatarURL string   `json:"avatar_url"`
-	Email     string   `json:"email"`
-	IdpID     string   `json:"idp_id"`
-	Name      string   `json:"name"`
-	Scopes    []string `json:"scopes"`
-	UserID    string   `json:"user_id"`
+	AvatarURL string `json:"avatar_url"`
+	Email     string `json:"email"`
+	IdpID     string `json:"idp_id"`
+	Name      string `json:"name"`
+	Scopes    Scopes `json:"scopes"`
+	UserID    string `json:"user_id"`
 }
 
 // regular log lines
@@ -6791,6 +6810,9 @@ type UpdateUserRolesJSONBody struct {
 	Roles []string `json:"roles"`
 }
 
+// EditKraudVolumeJSONBody defines parameters for EditKraudVolume.
+type EditKraudVolumeJSONBody KraudVolume
+
 // ListIngressClassesParams defines parameters for ListIngressClasses.
 type ListIngressClassesParams struct {
 	FieldSelector *string `json:"fieldSelector,omitempty"`
@@ -7860,6 +7882,14 @@ func (UpdateUserRolesJSONRequestBody) Bind(*http.Request) error {
 	return nil
 }
 
+// EditKraudVolumeJSONRequestBody defines body for EditKraudVolume for application/json ContentType.
+type EditKraudVolumeJSONRequestBody EditKraudVolumeJSONBody
+
+// Bind implements render.Binder.
+func (EditKraudVolumeJSONRequestBody) Bind(*http.Request) error {
+	return nil
+}
+
 // DockerConfigCreateJSONRequestBody defines body for DockerConfigCreate for application/json ContentType.
 type DockerConfigCreateJSONRequestBody DockerConfigCreateJSONBody
 
@@ -8695,6 +8725,36 @@ func CreateUserJSON201Response(body K8sUser) *Response {
 // GetUserJSON200Response is a constructor method for a GetUser response.
 // A *Response is returned with the configured status code and content type from the spec.
 func GetUserJSON200Response(body K8sUser) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// ListKraudVolumesJSON200Response is a constructor method for a ListKraudVolumes response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListKraudVolumesJSON200Response(body KraudVolumeList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// InspectKraudVolumeJSON200Response is a constructor method for a InspectKraudVolume response.
+// A *Response is returned with the configured status code and content type from the spec.
+func InspectKraudVolumeJSON200Response(body KraudVolume) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// EditKraudVolumeJSON200Response is a constructor method for a EditKraudVolume response.
+// A *Response is returned with the configured status code and content type from the spec.
+func EditKraudVolumeJSON200Response(body KraudVolume) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,

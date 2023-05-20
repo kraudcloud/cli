@@ -42,6 +42,7 @@ func main() {
 	root.AddCommand(idpCMD())
 	root.AddCommand(podsCMD())
 	root.AddCommand(psCMD())
+	root.AddCommand(volumesCMD())
 
 	root.PersistentFlags().StringVarP(&COMPOSE_FILENAME, "file", "f", COMPOSE_FILENAME_DEFAULT, "docker-compose.yml file")
 	root.PersistentFlags().StringVarP(&USER_CONTEXT, "context", "c", "default", "user context")

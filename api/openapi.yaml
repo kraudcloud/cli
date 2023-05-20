@@ -2100,13 +2100,13 @@ components:
                         $ref: '#/components/schemas/Kraud.Container'
                     type: array
                 Cpu:
-                    type: string
+                    type: integer
                 DeleteOnDeschedule:
                     type: boolean
                 ID:
                     type: string
                 Mem:
-                    type: string
+                    type: integer
                 Name:
                     type: string
                 Namespace:
@@ -2129,7 +2129,6 @@ components:
                 - Cpu
                 - Mem
                 - Zone
-                - Res
                 - RestartPolicy
                 - DeleteOnDeschedule
                 - Containers
@@ -2167,6 +2166,7 @@ components:
                     items:
                         type: string
                     type: array
+                    x-go-type: Scopes
             required:
                 - name
                 - description
@@ -2177,6 +2177,44 @@ components:
                 items:
                     items:
                         $ref: '#/components/schemas/Kraud.UserRole'
+                    type: array
+            required:
+                - items
+            type: object
+        Kraud.Volume:
+            properties:
+                AID:
+                    type: string
+                Class:
+                    type: string
+                DeletionLock:
+                    type: string
+                ExpiresAt:
+                    format: date-time
+                    type: string
+                ID:
+                    type: string
+                IOPS:
+                    type: integer
+                Name:
+                    type: string
+                Size:
+                    type: integer
+                Version:
+                    type: string
+                Zone:
+                    type: string
+            required:
+                - AID
+                - Name
+                - Size
+                - Class
+            type: object
+        Kraud.VolumeList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/Kraud.Volume'
                     type: array
             required:
                 - items
@@ -8982,6 +9020,7 @@ components:
                     items:
                         type: string
                     type: array
+                    x-go-type: Scopes
                 user_id:
                     type: string
             required:
@@ -11202,6 +11241,54 @@ paths:
                     content:
                         text/plain:
                             type: string
+                    description: OK
+    /apis/kraudcloud.com/v1/volumes:
+        get:
+            operationId: listKraudVolumes
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.VolumeList'
+                    description: OK
+    /apis/kraudcloud.com/v1/volumes/{q}:
+        get:
+            operationId: inspectKraudVolume
+            parameters:
+                - description: aid or uuid
+                  in: path
+                  name: q
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.Volume'
+                    description: OK
+        put:
+            operationId: editKraudVolume
+            parameters:
+                - description: aid or uuid
+                  in: path
+                  name: q
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Kraud.Volume'
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.Volume'
                     description: OK
     /apis/networking.k8s.io:
         get:
