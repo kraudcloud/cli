@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"sync"
 
+	dclient "github.com/docker/docker/client"
 	"github.com/kraudcloud/cli/api"
 )
 
@@ -65,4 +67,27 @@ func API() *api.Client {
 	})
 
 	return apiClient
+}
+
+func DockerClient() *dclient.Client {
+	ctx, err := dockerContextInspect(USER_CONTEXT)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	docker, err := dclient.NewClientWithOpts(
+		dclient.FromEnv,
+		dclient.WithAPIVersionNegotiation(),
+		dclient.WithHost(ctx.Endpoints.Docker.Host),
+		dclient.WithTLSClientConfig(
+			path.Join(ctx.Storage.TLSPath, "docker", ctx.TLSMaterial.Docker[0]),
+			path.Join(ctx.Storage.TLSPath, "docker", ctx.TLSMaterial.Docker[1]),
+			path.Join(ctx.Storage.TLSPath, "docker", ctx.TLSMaterial.Docker[2]),
+		),
+	)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	return docker
 }

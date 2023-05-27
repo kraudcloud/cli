@@ -6,24 +6,25 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"github.com/dustin/go-humanize"
-	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
 
+	"github.com/dustin/go-humanize"
+	"github.com/spf13/cobra"
+
 	"fmt"
+	"os"
+	"runtime"
+	"strings"
+	"sync"
+
 	"github.com/k0kubun/go-ansi"
 	"github.com/kraudcloud/cli/api"
 	"github.com/kraudcloud/cli/compose"
 	"github.com/mattn/go-isatty"
 	"github.com/mitchellh/colorstring"
 	"github.com/schollz/progressbar/v3"
-	"os"
-	"runtime"
-	"sync"
-	"strings"
 
-	//dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
 )
 
@@ -212,7 +213,6 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 					return
 				}
 
-
 				fmt.Println()
 				panic(err)
 			}
@@ -245,7 +245,7 @@ func imagePushCMD() *cobra.Command {
 			}
 
 			i := 0
-			for serviceName, s := range spec.Services {
+			for _, s := range spec.Services {
 				if i > 0 {
 					fmt.Println()
 				}
@@ -253,7 +253,7 @@ func imagePushCMD() *cobra.Command {
 
 				ref := s.Image
 
-				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Analyzing image "+ref)
+				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+s.Name+"[reset] Analyzing image "+ref)
 
 				docker, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
 				if err != nil {
@@ -270,7 +270,7 @@ func imagePushCMD() *cobra.Command {
 				// if both exist and are valid, do nothing
 				if remoteImage != nil && localImage.ID != "" {
 					if localImage.ID == remoteImage.Amd64.OciID {
-						colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Remote image is up to date")
+						colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+s.Name+"[reset] Remote image is up to date")
 						fmt.Println(remoteImage.AID)
 						continue
 					}
@@ -278,12 +278,12 @@ func imagePushCMD() *cobra.Command {
 
 				// if only the remote exists, do nothing
 				if remoteImage != nil && localImage.ID == "" {
-					colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Image "+ref+" not available locally!")
+					colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+s.Name+"[reset] Image "+ref+" not available locally!")
 					fmt.Println(remoteImage.AID)
 					continue
 				}
 
-				files, err := imageExtractFromDocker(cmd.Context(), serviceName, ref)
+				files, err := imageExtractFromDocker(cmd.Context(), s.Name, ref)
 
 				defer func() {
 					for _, t := range files {
@@ -343,12 +343,12 @@ func imagePushCMD() *cobra.Command {
 					}
 				}
 
-				err = uploadLayers(serviceName, layers)
+				err = uploadLayers(s.Name, layers)
 				if err != nil {
 					panic(err)
 				}
 
-				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Creating references")
+				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+s.Name+"[reset] Creating references")
 
 				layerRefs := []api.KraudLayerReference{}
 				for _, diffID := range config.Rootfs.DiffIDs {
@@ -371,7 +371,7 @@ func imagePushCMD() *cobra.Command {
 				}
 
 				for _, rn := range rsp.Renamed {
-					colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Renamed existing image to "+rn.Ref)
+					colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+s.Name+"[reset] Renamed existing image to "+rn.Ref)
 				}
 
 				fmt.Println(rsp.Created.AID)

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
+
+	"github.com/spf13/cobra"
 )
 
 func setupCMD() *cobra.Command {
@@ -62,4 +65,46 @@ func dockerSetupCmd() *cobra.Command {
 	c.Flags().StringVar(&tokenName, "token-name", "kra-setup-docker", "token name")
 
 	return c
+}
+
+type dockerContext struct {
+	Name string `json:"Name"`
+
+	Endpoints struct {
+		Docker struct {
+			Host          string `json:"Host"`
+			SkipTLSVerify bool   `json:"SkipTLSVerify"`
+		} `json:"docker"`
+	} `json:"Endpoints"`
+
+	TLSMaterial struct {
+		Docker []string `json:"docker"`
+	} `json:"TLSMaterial"`
+
+	Current bool `json:"Current"`
+
+	Storage struct {
+		MetadataPath string `json:"MetadataPath"`
+		TLSPath      string `json:"TLSPath"`
+	} `json:"Storage"`
+}
+
+func dockerContextInspect(context string) (dockerContext, error) {
+	c := []dockerContext{}
+	docker := exec.Command("docker", "context", "inspect", context)
+	buf := bytes.NewBuffer(nil)
+	docker.Stdout = buf
+	docker.Stderr = os.Stderr
+
+	err := docker.Run()
+	if err != nil {
+		return dockerContext{}, err
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &c)
+	if err != nil || len(c) == 0 {
+		return dockerContext{}, err
+	}
+
+	return c[0], nil
 }

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"os"
 	"runtime/debug"
 	"strings"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 var log = logrus.New()
@@ -43,10 +44,10 @@ func main() {
 	root.AddCommand(podsCMD())
 	root.AddCommand(psCMD())
 	root.AddCommand(volumesCMD())
+	root.AddCommand(upCMD())
 
-	root.PersistentFlags().StringVarP(&COMPOSE_FILENAME, "file", "f", COMPOSE_FILENAME_DEFAULT, "docker-compose.yml file")
+	root.PersistentFlags().StringVar(&COMPOSE_FILENAME, "file", COMPOSE_FILENAME_DEFAULT, "docker-compose.yml file")
 	root.PersistentFlags().StringVarP(&USER_CONTEXT, "context", "c", "default", "user context")
-
 	root.PersistentFlags().StringVarP(&OUTPUT_FORMAT, "output", "o", "table", "output format (table, json)")
 
 	defer func() {

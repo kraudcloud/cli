@@ -1,9 +1,12 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"golang.org/x/oauth2"
 )
 
 type Client struct {
@@ -17,10 +20,11 @@ type Client struct {
 
 func NewClient(authToken string) *Client {
 
-
 	return &Client{
-		HttpClient: http.DefaultClient,
-		AuthToken:  authToken,
+		HttpClient: oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(&oauth2.Token{
+			AccessToken: authToken,
+		})),
+		AuthToken: authToken,
 	}
 }
 
@@ -35,8 +39,6 @@ func (c *Client) Do(req *http.Request, response interface{}) error {
 
 	// req.URL.Host = "localhost:3804"
 	// req.URL.Scheme = "http"
-
-	req.Header.Set("Authorization", "Bearer "+c.AuthToken)
 
 	if req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
@@ -63,7 +65,6 @@ func (c *Client) Do(req *http.Request, response interface{}) error {
 		}
 		return fmt.Errorf("%s", resp.Status)
 	}
-
 
 	if response != nil {
 		err := json.NewDecoder(resp.Body).Decode(response)

@@ -1,21 +1,14 @@
 package compose
 
 import (
-	"gopkg.in/yaml.v3"
-	"os"
+	"github.com/compose-spec/compose-go/loader"
+	"github.com/compose-spec/compose-go/types"
 )
 
-func ParseFile(filename string) (*File, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	var file = &File{}
-	err = yaml.NewDecoder(f).Decode(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return file, nil
+func ParseFile(filename string) (*types.Project, error) {
+	return loader.Load(types.ConfigDetails{
+		WorkingDir:  ".",
+		ConfigFiles: []types.ConfigFile{{Filename: filename}},
+		Version:     "3.8",
+	})
 }
