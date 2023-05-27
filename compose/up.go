@@ -37,7 +37,7 @@ func Up(ctx context.Context, dcc *dc.Client, project *types.Project, options ...
 		return err
 	}
 
-	// TODO: make it right (aka use the right networks and stuff, currently we just ignore them)
+	// TODO: make it right (aka use the right networks (so create networks) currently we just ignore them)
 
 conVol:
 	for volName, createVol := range project.Volumes {

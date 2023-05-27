@@ -13,6 +13,9 @@ func upCMD() *cobra.Command {
 	c := &cobra.Command{
 		Use:    "up",
 		Short:  "up app",
+		Long:   "up takes a docker-compose file as input and ups the app on kraud cloud. Both it's API and functions are unstable, use at your own risk.",
+		Hidden: true, // TODO: remove this when it's stable
+
 		PreRun: func(_ *cobra.Command, _ []string) { logLevel += 3 },
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			project, err := compose.ParseFile(COMPOSE_FILENAME)
