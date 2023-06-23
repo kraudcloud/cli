@@ -26,3 +26,19 @@ func (c *Client) ListVolumes(ctx context.Context) (*KraudVolumeList, error) {
 
 	return response, nil
 }
+
+func (c *Client) DeleteVolume(ctx context.Context, aid string) error {
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"DELETE",
+		"/apis/kraudcloud.com/v1/volumes/"+aid,
+		nil,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return c.Do(req, nil)
+}

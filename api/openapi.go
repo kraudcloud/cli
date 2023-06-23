@@ -1590,10 +1590,10 @@ type KraudPod struct {
 	AID                string           `json:"AID"`
 	Architecture       string           `json:"Architecture"`
 	Containers         []KraudContainer `json:"Containers"`
-	CPU                int              `json:"Cpu"`
+	CPU                string           `json:"Cpu"`
 	DeleteOnDeschedule bool             `json:"DeleteOnDeschedule"`
 	ID                 *string          `json:"ID,omitempty"`
-	Mem                int              `json:"Mem"`
+	Mem                string           `json:"Mem"`
 	Name               string           `json:"Name"`
 	Namespace          string           `json:"Namespace"`
 	Replicas           int              `json:"Replicas"`

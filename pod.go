@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"github.com/dustin/go-humanize"
 )
 
 func psCMD() *cobra.Command {
@@ -80,8 +79,8 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 			}
 
 			table.AddRow(i.AID, i.Namespace, i.Name,
-				humanize.SI(float64(i.CPU *1000000), "Hz"),
-				humanize.Bytes(uint64(i.Mem)),
+				i.CPU,
+				i.Mem,
 				image)
 		}
 		table.Print()

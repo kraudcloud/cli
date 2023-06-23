@@ -2100,13 +2100,13 @@ components:
                         $ref: '#/components/schemas/Kraud.Container'
                     type: array
                 Cpu:
-                    type: integer
+                    type: string
                 DeleteOnDeschedule:
                     type: boolean
                 ID:
                     type: string
                 Mem:
-                    type: integer
+                    type: string
                 Name:
                     type: string
                 Namespace:
