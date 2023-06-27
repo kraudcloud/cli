@@ -128,7 +128,7 @@ func appsPush() *cobra.Command {
 	}
 
 	c.Flags().StringVar(&feed, "feed", "", "store to push to")
-	c.Flags().StringVarP(&changelog, "changelog", "c", "", "changelog for the app")
+	c.Flags().StringVarP(&changelog, "changelog", "l", "", "changelog for the app")
 	c.MarkFlagRequired("feed")
 
 	return c

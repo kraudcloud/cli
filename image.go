@@ -234,24 +234,38 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 func imagePushCMD() *cobra.Command {
 
 	c := &cobra.Command{
-		Use:   "push",
+		Use:   "push [IMAGE ...]",
 		Short: "Push local images to the kraud",
-		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 
-			spec, err := compose.ParseFile(COMPOSE_FILENAME)
-			if err != nil {
-				panic(err)
+
+
+			var images = make(map[string]string)
+
+			if len(args) > 0 {
+
+				for _, arg := range args {
+					images[arg] = arg
+				}
+
+			} else {
+				spec, err := compose.ParseFile(COMPOSE_FILENAME)
+				if err != nil {
+					panic(err)
+				}
+				for serviceName, s := range spec.Services {
+					images[s.Image] = serviceName
+				}
 			}
 
+
 			i := 0
-			for serviceName, s := range spec.Services {
+			for ref, serviceName := range images {
 				if i > 0 {
 					fmt.Println()
 				}
 				i++
 
-				ref := s.Image
 
 				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Analyzing image "+ref)
 
