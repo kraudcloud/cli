@@ -2004,6 +2004,42 @@ components:
             required:
                 - items
             type: object
+        Kraud.Domain:
+            properties:
+                CreatedAt:
+                    format: date-time
+                    type: string
+                ID:
+                    type: string
+                IngressID:
+                    type: string
+                Name:
+                    type: string
+            required:
+                - ID
+                - Name
+                - CreatedAt
+                - IngressID
+            type: object
+        Kraud.DomainCreate:
+            properties:
+                IngressID:
+                    description: Ingress ID, will use the default ingress if not specified
+                    type: string
+                Name:
+                    type: string
+            required:
+                - Name
+            type: object
+        Kraud.DomainList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/Kraud.Domain'
+                    type: array
+            required:
+                - items
+            type: object
         Kraud.Image:
             description: Image is a docker image for a specific architecture
             properties:
@@ -2059,6 +2095,8 @@ components:
                     type: string
                 OciID:
                     type: string
+                lost:
+                    type: boolean
                 refcount:
                     type: integer
                 sha256:
@@ -2072,6 +2110,7 @@ components:
                 - sha256
                 - OciID
                 - refcount
+                - lost
             type: object
         Kraud.LayerList:
             properties:
@@ -10615,6 +10654,32 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/Kraud.Deployment'
                     description: OK
+    /apis/kraudcloud.com/v1/domains:
+        get:
+            operationId: listDomains
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.DomainList'
+                    description: OK
+        post:
+            operationId: createDomain
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Kraud.DomainCreate'
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.Domain'
+                    description: OK
+                "401":
+                    description: Unauthorized
     /apis/kraudcloud.com/v1/events/stream.json:
         get:
             description: Get events, one line per event
@@ -11253,6 +11318,18 @@ paths:
                                 $ref: '#/components/schemas/Kraud.VolumeList'
                     description: OK
     /apis/kraudcloud.com/v1/volumes/{q}:
+        delete:
+            operationId: deleteKraudVolume
+            parameters:
+                - description: aid or uuid
+                  in: path
+                  name: q
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                204:
+                    description: OK
         get:
             operationId: inspectKraudVolume
             parameters:
