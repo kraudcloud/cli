@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/kraudcloud/cli/api"
+	"github.com/zalando/go-keyring"
 )
 
 var createApiOnce sync.Once
@@ -19,18 +20,13 @@ func API() *api.Client {
 
 		token := os.Getenv("KR_ACCESS_TOKEN")
 		if token == "" {
-
-			kr, err := openKeyring()
-			if err != nil {
-				log.Fatal(err)
-			}
-
 			key := "token"
 			if USER_CONTEXT != "default" {
 				key = fmt.Sprintf("%s:%s", USER_CONTEXT, key)
 			}
 
-			i, err := kr.Get(key)
+			var err error
+			token, err = keyring.Get(serviceName, key)
 			if err != nil {
 
 				context := ""
@@ -44,8 +40,6 @@ func API() *api.Client {
 						"Or set the KR_ACCESS_TOKEN environment variable.\n", context)
 				os.Exit(1)
 			}
-
-			token = string(i.Data)
 		}
 
 		apiClient = api.NewClient(token)
