@@ -6,7 +6,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"io"
+	"io/fs"
 	"io/ioutil"
 
 	"github.com/dustin/go-humanize"
@@ -233,11 +235,21 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 }
 
 func imagePushCMD() *cobra.Command {
+	const defaultComposeFile = "docker-compose.yml"
 	var composeFile string
 
 	c := &cobra.Command{
 		Use:   "push [IMAGE ...]",
 		Short: "Push local images to the kraud",
+		PreRun: func(cmd *cobra.Command, args []string) {
+			if composeFile != defaultComposeFile {
+				return
+			}
+
+			if _, err := os.Stat(composeFile); errors.Is(err, fs.ErrNotExist) {
+				composeFile = "docker-compose.yaml"
+			}
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			var images = make(map[string]string)
 
@@ -392,7 +404,7 @@ func imagePushCMD() *cobra.Command {
 		},
 	}
 
-	c.Flags().StringVarP(&composeFile, "compose-file", "f", "docker-compose.yml", "Compose file")
+	c.Flags().StringVarP(&composeFile, "compose-file", "f", defaultComposeFile, "Compose file")
 
 	return c
 }
