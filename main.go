@@ -36,6 +36,7 @@ func main() {
 	root.AddCommand(podsCMD())
 	root.AddCommand(psCMD())
 	root.AddCommand(volumesCMD())
+	root.AddCommand(podLogs())
 
 	root.PersistentFlags().StringVarP(&USER_CONTEXT, "context", "c", "default", "user context")
 	root.PersistentFlags().StringVarP(&OUTPUT_FORMAT, "output", "o", "table", "output format (table, json)")
