@@ -3,12 +3,13 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"github.com/kraudcloud/cli/api"
-	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/kraudcloud/cli/api"
+	"github.com/spf13/cobra"
 )
 
 func psCMD() *cobra.Command {
@@ -88,12 +89,29 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 }
 
 func podsInspect() *cobra.Command {
-
 	c := &cobra.Command{
 		Use:     "inspect",
 		Short:   "Inspect pod",
 		Aliases: []string{"get", "show", "info", "i"},
 		Args:    cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			// command takes 1 arg
+			if (len(args) > 1) || (len(args) == 1 && args[0] != "") {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			pods, err := API().ListPods(cmd.Context())
+			if err != nil {
+				panic(err)
+			}
+
+			var list []string
+			for _, i := range pods.Items {
+				list = append(list, i.AID)
+			}
+
+			return list, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 
 			pod, err := API().InspectPod(cmd.Context(), args[0])
@@ -119,6 +137,24 @@ func podsEdit() *cobra.Command {
 		Short:   "Edit pod",
 		Aliases: []string{"e"},
 		Args:    cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			// command takes 1 arg
+			if (len(args) > 1) || (len(args) == 1 && args[0] != "") {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			pods, err := API().ListPods(cmd.Context())
+			if err != nil {
+				panic(err)
+			}
+
+			var list []string
+			for _, i := range pods.Items {
+				list = append(list, i.AID)
+			}
+
+			return list, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 
 			pod, err := API().InspectPod(cmd.Context(), args[0])
@@ -138,7 +174,7 @@ func podsEdit() *cobra.Command {
 			defer os.Remove(tmpfile.Name())
 
 			pod.ID = nil
-			for i, _ := range pod.Containers {
+			for i := range pod.Containers {
 				pod.Containers[i].ID = nil
 			}
 
