@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"reflect"
 )
 
 // LogsOptions represents the options for the GetLogs method.
@@ -48,20 +47,4 @@ func (c *Client) GetLogs(ctx context.Context, container string, options LogsOpti
 	}
 
 	return resp.Body, nil
-}
-
-func structToQuery(v interface{}) url.Values {
-	values := url.Values{}
-
-	rv := reflect.ValueOf(v)
-	for i := 0; i < rv.NumField(); i++ {
-		field := rv.Field(i)
-		if field.IsZero() {
-			continue
-		}
-
-		values.Set(rv.Type().Field(i).Tag.Get("query"), fmt.Sprintf("%v", field))
-	}
-
-	return values
 }

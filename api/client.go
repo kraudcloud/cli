@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"reflect"
 )
 
 type Client struct {
@@ -16,7 +18,6 @@ type Client struct {
 }
 
 func NewClient(authToken string) *Client {
-
 
 	return &Client{
 		HttpClient: http.DefaultClient,
@@ -64,7 +65,6 @@ func (c *Client) Do(req *http.Request, response interface{}) error {
 		return fmt.Errorf("%s", resp.Status)
 	}
 
-
 	if response != nil {
 		err := json.NewDecoder(resp.Body).Decode(response)
 		if err != nil {
@@ -82,4 +82,23 @@ func (c *Client) DoRaw(req *http.Request) (*http.Response, error) {
 
 	req.Header.Set("Authorization", "Bearer "+c.AuthToken)
 	return c.HttpClient.Do(req)
+}
+
+// structToQuery converts a struct to a url.Values
+//
+// it uses the "query" tag on each field to determine the key.
+func structToQuery(v interface{}) url.Values {
+	values := url.Values{}
+
+	rv := reflect.ValueOf(v)
+	for i := 0; i < rv.NumField(); i++ {
+		field := rv.Field(i)
+		if field.IsZero() {
+			continue
+		}
+
+		values.Set(rv.Type().Field(i).Tag.Get("query"), fmt.Sprintf("%v", field))
+	}
+
+	return values
 }
