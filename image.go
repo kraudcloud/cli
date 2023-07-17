@@ -6,22 +6,24 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"github.com/dustin/go-humanize"
-	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
 
+	"github.com/dustin/go-humanize"
+	"github.com/spf13/cobra"
+
 	"fmt"
+	"os"
+	"runtime"
+	"strings"
+	"sync"
+
 	"github.com/k0kubun/go-ansi"
 	"github.com/kraudcloud/cli/api"
 	"github.com/kraudcloud/cli/compose"
 	"github.com/mattn/go-isatty"
 	"github.com/mitchellh/colorstring"
 	"github.com/schollz/progressbar/v3"
-	"os"
-	"runtime"
-	"sync"
-	"strings"
 
 	//dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
@@ -212,7 +214,6 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 					return
 				}
 
-
 				fmt.Println()
 				panic(err)
 			}
@@ -232,14 +233,12 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 }
 
 func imagePushCMD() *cobra.Command {
+	var composeFile string
 
 	c := &cobra.Command{
 		Use:   "push [IMAGE ...]",
 		Short: "Push local images to the kraud",
 		Run: func(cmd *cobra.Command, args []string) {
-
-
-
 			var images = make(map[string]string)
 
 			if len(args) > 0 {
@@ -249,7 +248,7 @@ func imagePushCMD() *cobra.Command {
 				}
 
 			} else {
-				spec, err := compose.ParseFile(COMPOSE_FILENAME)
+				spec, err := compose.ParseFile(composeFile)
 				if err != nil {
 					panic(err)
 				}
@@ -258,14 +257,12 @@ func imagePushCMD() *cobra.Command {
 				}
 			}
 
-
 			i := 0
 			for ref, serviceName := range images {
 				if i > 0 {
 					fmt.Println()
 				}
 				i++
-
 
 				colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Analyzing image "+ref)
 
@@ -395,6 +392,7 @@ func imagePushCMD() *cobra.Command {
 		},
 	}
 
-	return c
+	c.Flags().StringVarP(&composeFile, "compose-file", "f", "docker-compose.yml", "Compose file")
 
+	return c
 }
