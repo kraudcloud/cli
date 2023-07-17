@@ -3,12 +3,14 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"github.com/kraudcloud/cli/api"
-	"github.com/spf13/cobra"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/kraudcloud/cli/api"
+	"github.com/spf13/cobra"
 )
 
 func psCMD() *cobra.Command {
@@ -33,6 +35,7 @@ func podsCMD() *cobra.Command {
 	c.AddCommand(podsLs())
 	c.AddCommand(podsInspect())
 	c.AddCommand(podsEdit())
+	c.AddCommand(podLogs())
 
 	return c
 }
@@ -88,7 +91,6 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 }
 
 func podsInspect() *cobra.Command {
-
 	c := &cobra.Command{
 		Use:     "inspect",
 		Short:   "Inspect pod",
@@ -138,7 +140,7 @@ func podsEdit() *cobra.Command {
 			defer os.Remove(tmpfile.Name())
 
 			pod.ID = nil
-			for i, _ := range pod.Containers {
+			for i := range pod.Containers {
 				pod.Containers[i].ID = nil
 			}
 
@@ -201,4 +203,32 @@ func podsEdit() *cobra.Command {
 		},
 	}
 	return c
+}
+
+func podLogs() *cobra.Command {
+	var follow bool
+
+	c := &cobra.Command{
+		Use:     "logs [CONTAINER]",
+		Short:   "logs of a container",
+		Aliases: []string{"log"},
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rsp, err := API().GetLogs(cmd.Context(), args[0], api.LogsOptions{
+				Follow: follow,
+			})
+			if err != nil {
+				return err
+			}
+			defer rsp.Close()
+
+			_, err = io.Copy(os.Stdout, rsp)
+			return err
+		},
+	}
+
+	// TODO: add --since, --tail, --timestamps when implemented
+	c.Flags().BoolVarP(&follow, "follow", "f", false, "Keep tailing logs.")
+	return c
+
 }

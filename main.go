@@ -1,27 +1,20 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"os"
 	"runtime/debug"
 	"strings"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 var log = logrus.New()
 
-var COMPOSE_FILENAME string
-var COMPOSE_FILENAME_DEFAULT string = "docker-compose.yml"
 var USER_CONTEXT string
 var OUTPUT_FORMAT string
 
 func main() {
-
-	_, err := os.Stat("docker-compose.yml")
-	if err != nil {
-		COMPOSE_FILENAME_DEFAULT = "docker-compose.yaml"
-	}
-
 	root := cobra.Command{
 		Use:     "kra [command]",
 		Short:   "kraud api command line interface",
@@ -43,10 +36,9 @@ func main() {
 	root.AddCommand(podsCMD())
 	root.AddCommand(psCMD())
 	root.AddCommand(volumesCMD())
+	root.AddCommand(podLogs())
 
-	root.PersistentFlags().StringVarP(&COMPOSE_FILENAME, "file", "f", COMPOSE_FILENAME_DEFAULT, "docker-compose.yml file")
 	root.PersistentFlags().StringVarP(&USER_CONTEXT, "context", "c", "default", "user context")
-
 	root.PersistentFlags().StringVarP(&OUTPUT_FORMAT, "output", "o", "table", "output format (table, json)")
 
 	defer func() {
