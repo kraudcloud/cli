@@ -92,11 +92,10 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 
 func podsInspect() *cobra.Command {
 	c := &cobra.Command{
-		Use:               "inspect",
-		Short:             "Inspect pod",
-		Aliases:           []string{"get", "show", "info", "i"},
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: podAIDComplete,
+		Use:     "inspect",
+		Short:   "Inspect pod",
+		Aliases: []string{"get", "show", "info", "i"},
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 
 			pod, err := API().InspectPod(cmd.Context(), args[0])
@@ -118,11 +117,10 @@ func podsInspect() *cobra.Command {
 func podsEdit() *cobra.Command {
 
 	c := &cobra.Command{
-		Use:               "edit",
-		Short:             "Edit pod",
-		Aliases:           []string{"e"},
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: podAIDComplete,
+		Use:     "edit",
+		Short:   "Edit pod",
+		Aliases: []string{"e"},
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 
 			pod, err := API().InspectPod(cmd.Context(), args[0])
@@ -211,11 +209,10 @@ func podLogs() *cobra.Command {
 	var follow bool
 
 	c := &cobra.Command{
-		Use:               "logs [CONTAINER]",
-		Short:             "logs of a container",
-		Aliases:           []string{"log"},
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: podAIDComplete,
+		Use:     "logs [CONTAINER]",
+		Short:   "logs of a container",
+		Aliases: []string{"log"},
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rsp, err := API().GetLogs(cmd.Context(), args[0], api.LogsOptions{
 				Follow: follow,
@@ -234,24 +231,4 @@ func podLogs() *cobra.Command {
 	c.Flags().BoolVarP(&follow, "follow", "f", false, "Keep tailing logs.")
 	return c
 
-}
-
-func podAIDComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// command takes 1 arg
-	if (len(args) > 1) || (len(args) == 1 && args[0] != "") {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-
-	// Likely need to cache this?
-	pods, err := API().ListPods(cmd.Context())
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
-	}
-
-	var names []string
-	for _, container := range pods.Items {
-		names = append(names, container.AID)
-	}
-
-	return names, cobra.ShellCompDirectiveNoFileComp
 }
