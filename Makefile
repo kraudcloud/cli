@@ -1,5 +1,5 @@
 tag = $(shell git describe --tags)
-ldflags = -X api.Version=$(tag)
+ldflags = -X 'github.com/kraudcloud/cli/api.Version=$(tag)'
 
 all: kra
 
