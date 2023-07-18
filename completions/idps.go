@@ -14,7 +14,9 @@ func IDPOptions(client *api.Client, cmd *cobra.Command, args []string, toComplet
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	idps, err := client.ListIDPs(context.Background())
+	idps, err := getAside("idps", func() (*api.KraudIdentityProviderList, error) {
+		return client.ListIDPs(context.Background())
+	})
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}

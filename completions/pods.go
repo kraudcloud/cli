@@ -14,7 +14,9 @@ func PodOptions(client *api.Client, cmd *cobra.Command, args []string, toComplet
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	pods, err := client.ListPods(context.Background())
+	pods, err := getAside("pods", func() (*api.KraudPodList, error) {
+		return client.ListPods(context.Background())
+	})
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -37,7 +39,9 @@ func PodFromArg(ctx context.Context, client *api.Client, arg string) (string, er
 		return arg, nil
 	}
 
-	pods, err := client.ListPods(ctx)
+	pods, err := getAside("pods", func() (*api.KraudPodList, error) {
+		return client.ListPods(context.Background())
+	})
 	if err != nil {
 		return "", err
 	}

@@ -2,13 +2,17 @@ package completions
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/kraudcloud/cli/api"
 	"github.com/spf13/cobra"
 )
 
 func FeedOptions(client *api.Client, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	feeds, err := client.ListFeeds(cmd.Context())
+	feeds, err := getAside("feeds", func() (api.KraudFeedList, error) {
+		return client.ListFeeds(cmd.Context())
+	})
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -22,7 +26,9 @@ func FeedOptions(client *api.Client, cmd *cobra.Command, args []string, toComple
 }
 
 func FeedFromArg(ctx context.Context, client *api.Client, arg string) (string, error) {
-	feeds, err := client.ListFeeds(ctx)
+	feeds, err := getAside("feeds", func() (api.KraudFeedList, error) {
+		return client.ListFeeds(ctx)
+	})
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +39,7 @@ func FeedFromArg(ctx context.Context, client *api.Client, arg string) (string, e
 		}
 	}
 
-	return "", nil
+	return "", errors.New("feed not found")
 }
 
 func AppOptions(client *api.Client, feed string, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -42,7 +48,9 @@ func AppOptions(client *api.Client, feed string, cmd *cobra.Command, args []stri
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	apps, err := client.ListApps(cmd.Context(), feedID)
+	apps, err := getAside(fmt.Sprintf("%s:apps", feedID), func() (*api.ListAppsResponse, error) {
+		return client.ListApps(cmd.Context(), feedID)
+	})
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -56,7 +64,9 @@ func AppOptions(client *api.Client, feed string, cmd *cobra.Command, args []stri
 }
 
 func AppFromArg(ctx context.Context, client *api.Client, feedID, arg string) (string, error) {
-	apps, err := client.ListApps(ctx, feedID)
+	apps, err := getAside(fmt.Sprintf("%s:apps", feedID), func() (*api.ListAppsResponse, error) {
+		return client.ListApps(ctx, feedID)
+	})
 	if err != nil {
 		return "", err
 	}
@@ -67,5 +77,5 @@ func AppFromArg(ctx context.Context, client *api.Client, feedID, arg string) (st
 		}
 	}
 
-	return "", nil
+	return "", errors.New("app not found")
 }
