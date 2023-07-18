@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/kraudcloud/cli/api"
 	"github.com/spf13/cobra"
 )
@@ -214,15 +216,32 @@ func podLogs() *cobra.Command {
 		Aliases: []string{"log"},
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			rsp, err := API().GetLogs(cmd.Context(), args[0], api.LogsOptions{
-				Follow: follow,
-			})
+			ctx := cmd.Context()
+
+			dockerClient := API().DockerClient()
+			c, err := dockerClient.ContainerInspect(ctx, args[0])
 			if err != nil {
 				return err
 			}
-			defer rsp.Close()
 
-			_, err = io.Copy(os.Stdout, rsp)
+			options := types.ContainerLogsOptions{
+				ShowStdout: true,
+				ShowStderr: true,
+				Follow:     follow,
+				Tail:       "all",
+			}
+			responseBody, err := dockerClient.ContainerLogs(ctx, c.ID, options)
+			if err != nil {
+				return err
+			}
+			defer responseBody.Close()
+
+			if c.Config.Tty {
+				_, err = io.Copy(os.Stdout, responseBody)
+			} else {
+				_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, responseBody)
+			}
+
 			return err
 		},
 	}
