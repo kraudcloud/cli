@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/dustin/go-humanize"
-	"github.com/spf13/cobra"
-	"os"
 	"fmt"
+	"os"
+
+	"github.com/dustin/go-humanize"
+	"github.com/kraudcloud/cli/completions"
+	"github.com/spf13/cobra"
 )
 
 func volumesCMD() *cobra.Command {
@@ -64,6 +66,9 @@ func volumeRm() *cobra.Command {
 		Short:   "Remove volume",
 		Aliases: []string{"remove", "del", "delete"},
 		Args:    cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completions.VolumeOptions(API(), cmd, args, toComplete)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			err := API().DeleteVolume(cmd.Context(), args[0])
 			if err != nil {

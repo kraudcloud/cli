@@ -60,7 +60,7 @@ func appsLs() *cobra.Command {
 		},
 	}
 
-	c.Flags().StringVar(&feed, "feed", "", "store to list from")
+	c.Flags().StringVarP(&feed, "feed", "f", "", "app store")
 	c.MarkFlagRequired("feed")
 
 	return c
@@ -127,8 +127,8 @@ func appsPush() *cobra.Command {
 		},
 	}
 
-	c.Flags().StringVar(&feed, "feed", "", "store to push to")
-	c.Flags().StringVarP(&changelog, "changelog", "l", "", "changelog for the app")
+	c.Flags().StringVarP(&feed, "feed", "f", "", "app store")
+	c.Flags().StringVar(&changelog, "changelog", "", "changelog for the app")
 	c.MarkFlagRequired("feed")
 
 	return c

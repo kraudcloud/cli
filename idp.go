@@ -4,11 +4,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
-	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/kraudcloud/cli/completions"
+	"github.com/spf13/cobra"
 )
 
 func idpCMD() *cobra.Command {
@@ -134,9 +136,16 @@ func idpGet() *cobra.Command {
 		Aliases: []string{"get"},
 		Short:   "Inspect an identity provider",
 		Args:    cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completions.IDPOptions(API(), cmd, args, toComplete)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
+			id, err := completions.IDPFromArg(cmd.Context(), API(), args[0])
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-			ig, err := API().InspectIDP(cmd.Context(), args[0])
+			ig, err := API().InspectIDP(cmd.Context(), id)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -157,9 +166,16 @@ func idpCert() *cobra.Command {
 		Use:   "cert",
 		Short: "Get the certificate of an identity provider",
 		Args:  cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completions.IDPOptions(API(), cmd, args, toComplete)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
+			id, err := completions.IDPFromArg(cmd.Context(), API(), args[0])
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-			ig, err := API().InspectIDP(cmd.Context(), args[0])
+			ig, err := API().InspectIDP(cmd.Context(), id)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -189,9 +205,16 @@ func idpDelete() *cobra.Command {
 		Aliases: []string{"rm", "del", "remove"},
 		Short:   "Delete an identity provider",
 		Args:    cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completions.IDPOptions(API(), cmd, args, toComplete)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
+			id, err := completions.IDPFromArg(cmd.Context(), API(), args[0])
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-			err := API().DeleteIDP(cmd.Context(), args[0])
+			err = API().DeleteIDP(cmd.Context(), id)
 			if err != nil {
 				log.Fatalln(err)
 			}

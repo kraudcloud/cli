@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/kraudcloud/cli/api"
+	"github.com/kraudcloud/cli/completions"
 	"github.com/spf13/cobra"
 )
 
@@ -98,11 +99,18 @@ func podsInspect() *cobra.Command {
 		Short:   "Inspect pod",
 		Aliases: []string{"get", "show", "info", "i"},
 		Args:    cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-
-			pod, err := API().InspectPod(cmd.Context(), args[0])
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completions.PodOptions(API(), cmd, args, toComplete)
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			aid, err := completions.PodFromArg(cmd.Context(), API(), args[0])
 			if err != nil {
-				panic(err)
+				return err
+			}
+
+			pod, err := API().InspectPod(cmd.Context(), aid)
+			if err != nil {
+				return err
 			}
 
 			switch OUTPUT_FORMAT {
@@ -111,23 +119,31 @@ func podsInspect() *cobra.Command {
 				enc.SetIndent("", "  ")
 				enc.Encode(pod)
 			}
+
+			return nil
 		},
 	}
 	return c
 }
 
 func podsEdit() *cobra.Command {
-
 	c := &cobra.Command{
 		Use:     "edit",
 		Short:   "Edit pod",
 		Aliases: []string{"e"},
 		Args:    cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-
-			pod, err := API().InspectPod(cmd.Context(), args[0])
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completions.PodOptions(API(), cmd, args, toComplete)
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			aid, err := completions.PodFromArg(cmd.Context(), API(), args[0])
 			if err != nil {
-				panic(err)
+				return err
+			}
+
+			pod, err := API().InspectPod(cmd.Context(), aid)
+			if err != nil {
+				return err
 			}
 
 			editor := os.Getenv("EDITOR")
@@ -137,7 +153,7 @@ func podsEdit() *cobra.Command {
 
 			tmpfile, err := ioutil.TempFile("", "kra-pod-")
 			if err != nil {
-				panic(err)
+				return err
 			}
 			defer os.Remove(tmpfile.Name())
 
@@ -173,7 +189,7 @@ func podsEdit() *cobra.Command {
 
 				if string(str) == string(strNu) {
 					log.Info("No changes")
-					return
+					return nil
 				}
 
 				var newPod api.KraudPod
@@ -201,7 +217,7 @@ func podsEdit() *cobra.Command {
 			}
 
 			log.Info("changes commited but will not be applied until pod is restarted")
-
+			return nil
 		},
 	}
 	return c
@@ -215,11 +231,19 @@ func podLogs() *cobra.Command {
 		Short:   "logs of a container",
 		Aliases: []string{"log"},
 		Args:    cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completions.PodOptions(API(), cmd, args, toComplete)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
 			dockerClient := API().DockerClient()
-			c, err := dockerClient.ContainerInspect(ctx, args[0])
+			aid, err := completions.PodFromArg(cmd.Context(), API(), args[0])
+			if err != nil {
+				return err
+			}
+
+			c, err := dockerClient.ContainerInspect(ctx, aid)
 			if err != nil {
 				return err
 			}
