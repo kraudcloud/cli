@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/kraudcloud/cli/completions"
 	"github.com/spf13/cobra"
 )
 
@@ -34,15 +35,19 @@ func appsLs() *cobra.Command {
 		Use:     "ls",
 		Short:   "List apps",
 		Aliases: []string{"l"},
-		Run: func(_ *cobra.Command, _ []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			feedID, err := completions.FeedFromArg(cmd.Context(), API(), feed)
+			if err != nil {
+				return err
+			}
 
 			req, err := http.NewRequest(
 				"GET",
-				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/apps", feed),
+				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/apps", feedID),
 				nil,
 			)
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 
 			partial := struct {
@@ -51,17 +56,20 @@ func appsLs() *cobra.Command {
 
 			err = API().Do(req, &partial)
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
-			err = enc.Encode(partial)
+			return enc.Encode(partial)
 		},
 	}
 
 	c.Flags().StringVarP(&feed, "feed", "f", "", "app store")
 	c.MarkFlagRequired("feed")
+	c.RegisterFlagCompletionFunc("feed", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return completions.FeedOptions(API(), cmd, args, toComplete)
+	})
 
 	return c
 }
@@ -75,61 +83,69 @@ func appsPush() *cobra.Command {
 		Short:   "Push an app to the kraud",
 		Aliases: []string{"p"},
 		Args:    cobra.ExactArgs(1),
-		Run: func(_ *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			feedID, err := completions.FeedFromArg(cmd.Context(), API(), feed)
+			if err != nil {
+				return err
+			}
 
 			buf := &bytes.Buffer{}
 
 			body := multipart.NewWriter(buf)
 			file, err := body.CreateFormFile("template", "template.yaml")
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 
 			f, err := os.Open(args[0])
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 			defer f.Close()
 
 			_, err = io.Copy(file, f)
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 
 			if changelog != "" {
 				err = body.WriteField("changelog", changelog)
 				if err != nil {
-					log.Fatalln(err)
+					return err
 				}
 			}
 
 			err = body.Close()
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 
 			req, err := http.NewRequest(
 				"PUT",
-				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/app", feed),
+				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/app", feedID),
 				buf,
 			)
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 
 			req.Header.Set("Content-Type", body.FormDataContentType())
 
 			err = API().Do(req, nil)
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 
+			return nil
 		},
 	}
 
 	c.Flags().StringVarP(&feed, "feed", "f", "", "app store")
 	c.Flags().StringVar(&changelog, "changelog", "", "changelog for the app")
 	c.MarkFlagRequired("feed")
+	c.RegisterFlagCompletionFunc("feed", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return completions.FeedOptions(API(), cmd, args, toComplete)
+	})
 
 	return c
 }
@@ -142,31 +158,50 @@ func appsInspect() *cobra.Command {
 		Short:   "Inspect an app",
 		Aliases: []string{"i"},
 		Args:    cobra.ExactArgs(1),
-		Run: func(_ *cobra.Command, args []string) {
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			// feed must exist to complete apps
+			if feed == "" {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			return completions.AppOptions(API(), feed, cmd, args, toComplete)
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			feedID, err := completions.FeedFromArg(cmd.Context(), API(), feed)
+			if err != nil {
+				return err
+			}
+
+			appID, err := completions.AppFromArg(cmd.Context(), API(), feedID, args[0])
+			if err != nil {
+				return err
+			}
 
 			req, err := http.NewRequest(
 				"GET",
-				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/apps/%s/template", feed, args[0]),
+				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/apps/%s/template", feedID, appID),
 				nil,
 			)
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 
 			var resp = map[string]interface{}{}
 
 			err = API().Do(req, &resp)
 			if err != nil {
-				log.Fatalln(err)
+				return err
 			}
 
-			json.NewEncoder(os.Stdout).Encode(resp)
-
+			return json.NewEncoder(os.Stdout).Encode(resp)
 		},
 	}
 
 	c.Flags().StringVarP(&feed, "feed", "f", "", "store to push to")
 	c.MarkFlagRequired("feed")
+	c.RegisterFlagCompletionFunc("feed", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return completions.FeedOptions(API(), cmd, args, toComplete)
+	})
 
 	return c
 }

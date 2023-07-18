@@ -95,10 +95,19 @@ func idpCreate() *cobra.Command {
 	}
 
 	c.Flags().StringVar(&namespace, "namespace", "default", "Namespace to create resource in")
+	c.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return completions.NamespaceOptions(API(), cmd, args, toComplete)
+	})
 
 	c.Flags().StringVar(&name, "name", "", "Name of the identity provider")
 	c.MarkFlagRequired("name")
+	c.RegisterFlagCompletionFunc("name", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	})
 	c.Flags().StringVar(&protocol, "proto", "saml", "Protocol of the identity provider")
+	c.RegisterFlagCompletionFunc("proto", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	})
 	c.Flags().StringVar(&svc_metadata_url, "svc", "", "service metadata url or local file")
 	c.MarkFlagRequired("svc")
 
