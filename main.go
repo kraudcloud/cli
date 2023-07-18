@@ -14,7 +14,6 @@ var log = logrus.New()
 
 var USER_CONTEXT string
 var OUTPUT_FORMAT string
-var Version string = "devel"
 
 func main() {
 	root := cobra.Command{
