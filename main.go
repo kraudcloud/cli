@@ -5,6 +5,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/kraudcloud/cli/api"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -18,7 +19,7 @@ func main() {
 	root := cobra.Command{
 		Use:     "kra [command]",
 		Short:   "kraud api command line interface",
-		Version: "1.1.2",
+		Version: api.Version,
 	}
 
 	root.AddCommand(feedsCMD())
