@@ -98,7 +98,6 @@ func (c *Client) DoRaw(req *http.Request) (*http.Response, error) {
 type kraTransport struct {
 	Base http.RoundTripper
 
-	// ProxyURL is the URL to the proxy server to use for requests.
 	Scheme string
 	Host   string
 
