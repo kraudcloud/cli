@@ -2,7 +2,6 @@ package completions
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/kraudcloud/cli/api"
@@ -25,29 +24,25 @@ func FeedOptions(client *api.Client, cmd *cobra.Command, args []string, toComple
 	return out, cobra.ShellCompDirectiveNoFileComp
 }
 
-func FeedFromArg(ctx context.Context, client *api.Client, arg string) (string, error) {
+func FeedFromArg(ctx context.Context, client *api.Client, arg string) string {
 	feeds, err := getAside("feeds", client.AuthToken, func() (api.KraudFeedList, error) {
 		return client.ListFeeds(ctx)
 	})
 	if err != nil {
-		return "", err
+		return arg
 	}
 
 	for _, i := range feeds {
 		if i.Name == arg {
-			return i.ID, nil
+			return i.ID
 		}
 	}
 
-	return "", errors.New("feed not found")
+	return arg
 }
 
 func AppOptions(client *api.Client, feed string, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	feedID, err := FeedFromArg(cmd.Context(), client, feed)
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
-	}
-
+	feedID := FeedFromArg(cmd.Context(), client, feed)
 	apps, err := getAside(fmt.Sprintf("%s:apps", feedID), client.AuthToken, func() (*api.ListAppsResponse, error) {
 		return client.ListApps(cmd.Context(), feedID)
 	})
@@ -63,19 +58,19 @@ func AppOptions(client *api.Client, feed string, cmd *cobra.Command, args []stri
 	return out, cobra.ShellCompDirectiveNoFileComp
 }
 
-func AppFromArg(ctx context.Context, client *api.Client, feedID, arg string) (string, error) {
+func AppFromArg(ctx context.Context, client *api.Client, feedID, arg string) string {
 	apps, err := getAside(fmt.Sprintf("%s:apps", feedID), client.AuthToken, func() (*api.ListAppsResponse, error) {
 		return client.ListApps(ctx, feedID)
 	})
 	if err != nil {
-		return "", err
+		return arg
 	}
 
 	for _, i := range apps.Items {
 		if i.Name == arg {
-			return i.ID, nil
+			return i.ID
 		}
 	}
 
-	return "", errors.New("app not found")
+	return arg
 }

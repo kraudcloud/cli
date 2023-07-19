@@ -149,11 +149,7 @@ func idpGet() *cobra.Command {
 			return completions.IDPOptions(API(), cmd, args, toComplete)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			id, err := completions.IDPFromArg(cmd.Context(), API(), args[0])
-			if err != nil {
-				log.Fatalln(err)
-			}
-
+			id := completions.IDPFromArg(cmd.Context(), API(), args[0])
 			ig, err := API().InspectIDP(cmd.Context(), id)
 			if err != nil {
 				log.Fatalln(err)
@@ -179,11 +175,7 @@ func idpCert() *cobra.Command {
 			return completions.IDPOptions(API(), cmd, args, toComplete)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			id, err := completions.IDPFromArg(cmd.Context(), API(), args[0])
-			if err != nil {
-				log.Fatalln(err)
-			}
-
+			id := completions.IDPFromArg(cmd.Context(), API(), args[0])
 			ig, err := API().InspectIDP(cmd.Context(), id)
 			if err != nil {
 				log.Fatalln(err)
@@ -218,12 +210,8 @@ func idpDelete() *cobra.Command {
 			return completions.IDPOptions(API(), cmd, args, toComplete)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			id, err := completions.IDPFromArg(cmd.Context(), API(), args[0])
-			if err != nil {
-				log.Fatalln(err)
-			}
-
-			err = API().DeleteIDP(cmd.Context(), id)
+			id := completions.IDPFromArg(cmd.Context(), API(), args[0])
+			err := API().DeleteIDP(cmd.Context(), id)
 			if err != nil {
 				log.Fatalln(err)
 			}

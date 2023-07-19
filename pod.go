@@ -103,11 +103,7 @@ func podsInspect() *cobra.Command {
 			return completions.PodOptions(API(), cmd, args, toComplete)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aid, err := completions.PodFromArg(cmd.Context(), API(), args[0])
-			if err != nil {
-				return err
-			}
-
+			aid := completions.PodFromArg(cmd.Context(), API(), args[0])
 			pod, err := API().InspectPod(cmd.Context(), aid)
 			if err != nil {
 				return err
@@ -136,11 +132,7 @@ func podsEdit() *cobra.Command {
 			return completions.PodOptions(API(), cmd, args, toComplete)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aid, err := completions.PodFromArg(cmd.Context(), API(), args[0])
-			if err != nil {
-				return err
-			}
-
+			aid := completions.PodFromArg(cmd.Context(), API(), args[0])
 			pod, err := API().InspectPod(cmd.Context(), aid)
 			if err != nil {
 				return err
@@ -238,11 +230,7 @@ func podLogs() *cobra.Command {
 			ctx := cmd.Context()
 
 			dockerClient := API().DockerClient()
-			aid, err := completions.PodFromArg(cmd.Context(), API(), args[0])
-			if err != nil {
-				return err
-			}
-
+			aid := completions.PodFromArg(ctx, API(), args[0])
 			c, err := dockerClient.ContainerInspect(ctx, aid)
 			if err != nil {
 				return err

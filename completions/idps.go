@@ -2,7 +2,6 @@ package completions
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/kraudcloud/cli/api"
@@ -29,26 +28,29 @@ func IDPOptions(client *api.Client, cmd *cobra.Command, args []string, toComplet
 	return out, cobra.ShellCompDirectiveNoFileComp
 }
 
-func IDPFromArg(ctx context.Context, client *api.Client, arg string) (string, error) {
-	if !strings.Contains(arg, "/") {
-		arg = "default/" + arg
+func IDPFromArg(ctx context.Context, client *api.Client, arg string) string {
+	newArg := arg
+	if !strings.Contains(newArg, "/") {
+		newArg = "default/" + newArg
 	}
 
-	ns, id, ok := strings.Cut(arg, "/")
+	ns, id, ok := strings.Cut(newArg, "/")
 	if !ok {
-		return "", fmt.Errorf("invalid idp %s", arg)
+		return arg
 	}
 
-	idps, err := client.ListIDPs(ctx)
+	idps, err := getAside("idps", client.AuthToken, func() (*api.KraudIdentityProviderList, error) {
+		return client.ListIDPs(ctx)
+	})
 	if err != nil {
-		return "", err
+		return arg
 	}
 
 	for _, i := range idps.Items {
 		if i.Namespace == ns && i.Name == id {
-			return *i.ID, nil
+			return *i.ID
 		}
 	}
 
-	return "", fmt.Errorf("pod %s not found", arg)
+	return arg
 }

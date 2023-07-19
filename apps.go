@@ -36,11 +36,7 @@ func appsLs() *cobra.Command {
 		Short:   "List apps",
 		Aliases: []string{"l"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			feedID, err := completions.FeedFromArg(cmd.Context(), API(), feed)
-			if err != nil {
-				return err
-			}
-
+			feedID := completions.FeedFromArg(cmd.Context(), API(), feed)
 			req, err := http.NewRequest(
 				"GET",
 				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/apps", feedID),
@@ -84,10 +80,7 @@ func appsPush() *cobra.Command {
 		Aliases: []string{"p"},
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			feedID, err := completions.FeedFromArg(cmd.Context(), API(), feed)
-			if err != nil {
-				return err
-			}
+			feedID := completions.FeedFromArg(cmd.Context(), API(), feed)
 
 			buf := &bytes.Buffer{}
 
@@ -167,15 +160,8 @@ func appsInspect() *cobra.Command {
 			return completions.AppOptions(API(), feed, cmd, args, toComplete)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			feedID, err := completions.FeedFromArg(cmd.Context(), API(), feed)
-			if err != nil {
-				return err
-			}
-
-			appID, err := completions.AppFromArg(cmd.Context(), API(), feedID, args[0])
-			if err != nil {
-				return err
-			}
+			feedID := completions.FeedFromArg(cmd.Context(), API(), feed)
+			appID := completions.AppFromArg(cmd.Context(), API(), feedID, args[0])
 
 			req, err := http.NewRequest(
 				"GET",

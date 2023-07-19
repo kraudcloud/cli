@@ -28,23 +28,24 @@ func VolumeOptions(client *api.Client, cmd *cobra.Command, args []string, toComp
 	return out, cobra.ShellCompDirectiveNoFileComp
 }
 
-func VolumeFromArg(ctx context.Context, client *api.Client, arg string) (string, error) {
-	if !strings.Contains(arg, "/") {
-		arg = "default/" + arg
+func VolumeFromArg(ctx context.Context, client *api.Client, arg string) string {
+	newArg := arg
+	if !strings.Contains(newArg, "/") {
+		newArg = "default/" + newArg
 	}
 
 	volumes, err := getAside("volumes", client.AuthToken, func() (*api.KraudVolumeList, error) {
 		return client.ListVolumes(ctx)
 	})
 	if err != nil {
-		return "", err
+		return arg
 	}
 
 	for _, i := range volumes.Items {
-		if i.Name == arg {
-			return i.AID, nil
+		if i.Name == newArg {
+			return i.AID
 		}
 	}
 
-	return "", nil
+	return arg
 }

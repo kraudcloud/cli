@@ -2,7 +2,6 @@ package completions
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/kraudcloud/cli/api"
@@ -29,28 +28,29 @@ func PodOptions(client *api.Client, cmd *cobra.Command, args []string, toComplet
 	return out, cobra.ShellCompDirectiveNoFileComp
 }
 
-func PodFromArg(ctx context.Context, client *api.Client, arg string) (string, error) {
-	if !strings.Contains(arg, "/") {
-		arg = "default/" + arg
+func PodFromArg(ctx context.Context, client *api.Client, arg string) string {
+	newArg := arg
+	if !strings.Contains(newArg, "/") {
+		newArg = "default/" + newArg
 	}
 
-	ns, pod, ok := strings.Cut(arg, "/")
+	ns, pod, ok := strings.Cut(newArg, "/")
 	if !ok {
-		return arg, nil
+		return arg
 	}
 
 	pods, err := getAside("pods", client.AuthToken, func() (*api.KraudPodList, error) {
 		return client.ListPods(ctx)
 	})
 	if err != nil {
-		return "", err
+		return arg
 	}
 
 	for _, i := range pods.Items {
 		if i.Namespace == ns && i.Name == pod {
-			return i.AID, nil
+			return i.AID
 		}
 	}
 
-	return "", fmt.Errorf("pod %s not found", arg)
+	return arg
 }
