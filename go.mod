@@ -3,6 +3,7 @@ module github.com/kraudcloud/cli
 go 1.19
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v24.0.4+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.15.0
@@ -16,7 +17,10 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/zalando/go-keyring v0.2.3
 	golang.org/x/crypto v0.11.0
+	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
+	golang.org/x/net v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
+	mvdan.cc/sh/v3 v3.7.0
 )
 
 require (
@@ -41,7 +45,6 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/time v0.3.0 // indirect

@@ -5300,12 +5300,20 @@ type KraudAppOverview_Config struct {
 
 // KraudAppTemplateConfig defines model for kraud.AppTemplateConfig.
 type KraudAppTemplateConfig struct {
-	Default              string                 `json:"default"`
-	Description          string                 `json:"description"`
-	Kind                 string                 `json:"kind"`
-	Label                string                 `json:"label"`
-	Required             bool                   `json:"required"`
-	AdditionalProperties map[string]interface{} `json:"-"`
+	Default              string                         `json:"default"`
+	Description          string                         `json:"description"`
+	Kind                 string                         `json:"kind"`
+	Label                string                         `json:"label"`
+	Options              []KraudAppTemplateConfigOption `json:"options,omitempty"`
+	Required             bool                           `json:"required"`
+	AdditionalProperties map[string]interface{}         `json:"-"`
+}
+
+// KraudAppTemplateConfigOption defines model for kraud.AppTemplateConfigOption.
+type KraudAppTemplateConfigOption struct {
+	Description string `json:"description"`
+	Label       string `json:"label"`
+	Value       string `json:"value"`
 }
 
 // KraudAppVersion defines model for kraud.AppVersion.
@@ -5395,6 +5403,15 @@ type KraudLaunchSettings struct {
 // KraudLaunchSettings_Config defines model for KraudLaunchSettings.Config.
 type KraudLaunchSettings_Config struct {
 	AdditionalProperties map[string]string `json:"-"`
+}
+
+// KraudLaunchTemplateRequest defines model for kraud.LaunchTemplateRequest.
+type KraudLaunchTemplateRequest struct {
+	// LaunchSettings is the settings for launching an app.
+	Config KraudLaunchSettings `json:"config"`
+
+	// template to launch, akin to a docker-compose file
+	Template string `json:"template"`
 }
 
 // KraudSessionInfo defines model for kraud.SessionInfo.
@@ -8657,6 +8674,16 @@ func CreateImageJSON200Response(body KraudCreateImageResponse) *Response {
 // InspectImageJSON200Response is a constructor method for a InspectImage response.
 // A *Response is returned with the configured status code and content type from the spec.
 func InspectImageJSON200Response(body KraudImageName) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// LaunchTemplateJSON200Response is a constructor method for a LaunchTemplate response.
+// A *Response is returned with the configured status code and content type from the spec.
+func LaunchTemplateJSON200Response(body KraudLaunchAppResponse) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,
@@ -12333,6 +12360,14 @@ func (a *KraudAppTemplateConfig) UnmarshalJSON(b []byte) error {
 		delete(object, "label")
 	}
 
+	if raw, found := object["options"]; found {
+		err = json.Unmarshal(raw, &a.Options)
+		if err != nil {
+			return fmt.Errorf("error reading 'options': %w", err)
+		}
+		delete(object, "options")
+	}
+
 	if raw, found := object["required"]; found {
 		err = json.Unmarshal(raw, &a.Required)
 		if err != nil {
@@ -12378,6 +12413,13 @@ func (a KraudAppTemplateConfig) MarshalJSON() ([]byte, error) {
 	object["label"], err = json.Marshal(a.Label)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling 'label': %w", err)
+	}
+
+	if a.Options != nil {
+		object["options"], err = json.Marshal(a.Options)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'options': %w", err)
+		}
 	}
 
 	object["required"], err = json.Marshal(a.Required)

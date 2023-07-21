@@ -8858,6 +8858,10 @@ components:
                     type: string
                 label:
                     type: string
+                options:
+                    items:
+                        $ref: '#/components/schemas/kraud.AppTemplateConfigOption'
+                    type: array
                 required:
                     type: boolean
             required:
@@ -8866,6 +8870,19 @@ components:
                 - description
                 - default
                 - required
+            type: object
+        kraud.AppTemplateConfigOption:
+            properties:
+                description:
+                    type: string
+                label:
+                    type: string
+                value:
+                    type: string
+            required:
+                - value
+                - label
+                - description
             type: object
         kraud.AppVersion:
             properties:
@@ -9017,6 +9034,19 @@ components:
                 - roles
                 - config
             type: object
+        kraud.LaunchTemplateRequest:
+            properties:
+                config:
+                    $ref: '#/components/schemas/kraud.LaunchSettings'
+                    content-type: application/json
+                    description: launch settings for the template
+                template:
+                    description: template to launch, akin to a docker-compose file
+                    format: binary
+                    type: string
+            required:
+                - template
+                - config
         kraud.SessionInfo:
             properties:
                 tenants:
@@ -10914,6 +10944,21 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/Kraud.ImageName'
                     description: OK
+    /apis/kraudcloud.com/v1/launch:
+        post:
+            operationId: launchTemplate
+            requestBody:
+                content:
+                    multipart/form-data:
+                        schema:
+                            $ref: '#/components/schemas/kraud.LaunchTemplateRequest'
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kraud.LaunchAppResponse'
+                    description: OK. Launch in progress
     /apis/kraudcloud.com/v1/launch/{launch_id}/attach:
         get:
             operationId: attachLaunch

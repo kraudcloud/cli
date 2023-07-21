@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	dockerclient "github.com/docker/docker/client"
 )
@@ -17,18 +18,16 @@ type Client struct {
 	// AuthToken is the token used to authenticate with the API.
 	AuthToken string
 
-	Host string
+	BaseURL *url.URL
 }
 
-func NewClient(authToken string) *Client {
-	host := "api.kraudcloud.com"
+func NewClient(authToken string, baseURL *url.URL) *Client {
 	userAgent := fmt.Sprintf("kra %s", Version)
 
 	client := &http.Client{
 		Transport: &kraTransport{
 			Base:      http.DefaultTransport,
-			Scheme:    "https",
-			Host:      host,
+			BaseURL:   baseURL,
 			UserAgent: userAgent,
 			AuthToken: authToken,
 		},
@@ -37,7 +36,7 @@ func NewClient(authToken string) *Client {
 	return &Client{
 		HTTPClient: client,
 		AuthToken:  authToken,
-		Host:       host,
+		BaseURL:    baseURL,
 	}
 }
 
@@ -48,7 +47,7 @@ func (c *Client) Close() {
 func (c *Client) DockerClient() *dockerclient.Client {
 	dc, err := dockerclient.NewClientWithOpts(
 		dockerclient.WithAPIVersionNegotiation(),
-		dockerclient.WithHost("tcp://"+c.Host),
+		dockerclient.WithHost("tcp://"+c.BaseURL.Host),
 		dockerclient.WithHTTPClient(c.HTTPClient),
 	)
 	if err != nil {
@@ -98,8 +97,7 @@ func (c *Client) DoRaw(req *http.Request) (*http.Response, error) {
 type kraTransport struct {
 	Base http.RoundTripper
 
-	Scheme string
-	Host   string
+	BaseURL *url.URL
 
 	UserAgent string
 
@@ -107,8 +105,8 @@ type kraTransport struct {
 }
 
 func (t *kraTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.URL.Scheme = t.Scheme
-	req.URL.Host = t.Host
+	req.URL.Scheme = t.BaseURL.Scheme
+	req.URL.Host = t.BaseURL.Host
 	if req.Header.Get("User-Agent") == "" {
 		req.Header.Set("User-Agent", t.UserAgent)
 	}
