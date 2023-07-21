@@ -110,27 +110,23 @@ func (c *Client) LaunchApp(ctx context.Context, feedID string, appID string, par
 		return nil, err
 	}
 
-	path, err := url.JoinPath("/apis/kraudcloud.com/v1/feeds", feedID, "apps", appID, "launch")
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(
+	req, err := http.NewRequestWithContext(
+		ctx,
 		"POST",
-		path,
+		path.Join("/apis/kraudcloud.com/v1/feeds", feedID, "apps", appID, "launch"),
 		buf,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &KraudLaunchAppResponse{}
-	err = c.Do(req, &resp)
+	var response KraudLaunchAppResponse
+	err = c.Do(req, &response)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp, nil
+	return &response, nil
 }
 
 func (c *Client) LaunchAttach(ctx context.Context, w io.Writer, launchID string) error {
@@ -148,7 +144,7 @@ func (c *Client) LaunchAttach(ctx context.Context, w io.Writer, launchID string)
 	}
 
 	for {
-		t, msg, err := conn.Read(ctx)
+		t, msgReader, err := conn.Reader(ctx)
 		if err != nil {
 			return err
 		}
@@ -157,7 +153,7 @@ func (c *Client) LaunchAttach(ctx context.Context, w io.Writer, launchID string)
 			continue
 		}
 
-		err = wsMessage(w, msg)
+		err = CopyWS(w, msgReader)
 		if err != nil {
 			return err
 		}
@@ -173,32 +169,34 @@ func MustJSONString(v any) string {
 	return string(b)
 }
 
-func wsMessage(w io.Writer, msg []byte) error {
+func CopyWS(w io.Writer, r io.Reader) error {
+	decoder := json.NewDecoder(r)
 
-	// check for log
-	var log KraudWSLaunchLog
-	err := json.Unmarshal(msg, &log)
-	if err == nil && log.Log != "" {
-		_, err = fmt.Fprintln(w, strings.TrimSpace(log.Log))
-		if err != nil {
+	for {
+		var msg json.RawMessage
+		err := decoder.Decode(&msg)
+		switch {
+		case err == io.EOF:
+			return nil
+		case err != nil:
 			return err
 		}
 
-		return nil
-	}
+		// check for log
+		var log KraudWSLaunchLog
+		err = json.Unmarshal(msg, &log)
+		if err == nil && log.Log != "" {
+			_, err = fmt.Fprintln(w, strings.TrimSpace(log.Log))
+			if err != nil {
+				return err
+			}
+			continue
+		}
 
-	var meta KraudWSLaunchMeta
-	err = json.Unmarshal(msg, &meta)
-	if err != nil {
-		return err
+		var meta KraudWSLaunchMeta
+		err = json.Unmarshal(msg, &meta)
+		if err != nil {
+			return err
+		}
 	}
-
-	switch {
-	case meta.Error != nil:
-		fmt.Fprintf(w, "Error: %s\n", *meta.Error)
-	case meta.DeploymentAids != nil:
-		fmt.Fprintf(w, "Deployment AIDs: %v\n", meta.DeploymentAids)
-	}
-
-	return nil
 }
