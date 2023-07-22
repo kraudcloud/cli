@@ -58,6 +58,9 @@ func (c *Client) DockerClient() *dockerclient.Client {
 }
 
 func (c *Client) Do(req *http.Request, response interface{}) error {
+	if req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	req.Header.Set("Accept", "application/json")
 	resp, err := c.HTTPClient.Do(req)
