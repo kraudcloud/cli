@@ -12,7 +12,7 @@ import (
 	"path"
 	"strings"
 
-	"golang.org/x/net/websocket"
+	"nhooyr.io/websocket"
 )
 
 func (c *Client) ListFeeds(ctx context.Context) (KraudFeedList, error) {
@@ -103,32 +103,65 @@ func (c *Client) Launch(ctx context.Context, template string, config KraudLaunch
 	return &response, nil
 }
 
-func (c *Client) LaunchAttach(ctx context.Context, w io.Writer, launchID string) error {
-	scheme := "ws"
-	if c.BaseURL.Scheme == "https" {
-		scheme = "wss"
+func (c *Client) LaunchApp(ctx context.Context, feedID string, appID string, params KraudLaunchSettings) (*KraudLaunchAppResponse, error) {
+	buf := &bytes.Buffer{}
+	err := json.NewEncoder(buf).Encode(params)
+	if err != nil {
+		return nil, err
 	}
 
+	path, err := url.JoinPath("/apis/kraudcloud.com/v1/feeds", feedID, "apps", appID, "launch")
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		path,
+		buf,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &KraudLaunchAppResponse{}
+	err = c.Do(req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (c *Client) LaunchAttach(ctx context.Context, w io.Writer, launchID string) error {
 	u := &url.URL{
-		Scheme: scheme,
+		Scheme: c.BaseURL.Scheme,
 		Host:   c.BaseURL.Host,
 		Path:   path.Join("/apis/kraudcloud.com/v1/launch", launchID, "attach"),
 	}
 
-	config, err := websocket.NewConfig(u.String(), "http://localhost")
-	if err != nil {
-		return err
-	}
-	config.Header.Add("Authorization", "Bearer "+c.AuthToken)
-
-	conn, err := websocket.DialConfig(config)
+	conn, _, err := websocket.Dial(ctx, u.String(), &websocket.DialOptions{
+		HTTPClient: c.HTTPClient,
+	})
 	if err != nil {
 		return err
 	}
 
-	defer conn.Close()
+	for {
+		t, msg, err := conn.Read(ctx)
+		if err != nil {
+			return err
+		}
 
-	return CopyWS(w, conn)
+		if t != websocket.MessageText {
+			continue
+		}
+
+		err = wsMessage(w, msg)
+		if err != nil {
+			return err
+		}
+	}
 }
 
 func MustJSONString(v any) string {
@@ -140,34 +173,32 @@ func MustJSONString(v any) string {
 	return string(b)
 }
 
-func CopyWS(w io.Writer, r io.Reader) error {
-	decoder := json.NewDecoder(r)
+func wsMessage(w io.Writer, msg []byte) error {
 
-	for {
-		var msg json.RawMessage
-		err := decoder.Decode(&msg)
-		switch {
-		case err == io.EOF:
-			return nil
-		case err != nil:
-			return err
-		}
-
-		// check for log
-		var log KraudWSLaunchLog
-		err = json.Unmarshal(msg, &log)
-		if err == nil && log.Log != "" {
-			_, err = fmt.Fprintln(w, strings.TrimSpace(log.Log))
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		var meta KraudWSLaunchMeta
-		err = json.Unmarshal(msg, &meta)
+	// check for log
+	var log KraudWSLaunchLog
+	err := json.Unmarshal(msg, &log)
+	if err == nil && log.Log != "" {
+		_, err = fmt.Fprintln(w, strings.TrimSpace(log.Log))
 		if err != nil {
 			return err
 		}
+
+		return nil
 	}
+
+	var meta KraudWSLaunchMeta
+	err = json.Unmarshal(msg, &meta)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case meta.Error != nil:
+		fmt.Fprintf(w, "Error: %s\n", *meta.Error)
+	case meta.DeploymentAids != nil:
+		fmt.Fprintf(w, "Deployment AIDs: %v\n", meta.DeploymentAids)
+	}
+
+	return nil
 }

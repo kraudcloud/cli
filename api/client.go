@@ -35,8 +35,8 @@ func NewClient(authToken string, baseURL *url.URL) *Client {
 
 	return &Client{
 		HTTPClient: client,
-		AuthToken:  authToken,
 		BaseURL:    baseURL,
+		AuthToken:  authToken,
 	}
 }
 
@@ -110,11 +110,11 @@ type kraTransport struct {
 func (t *kraTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.URL.Scheme = t.BaseURL.Scheme
 	req.URL.Host = t.BaseURL.Host
-	if req.Header.Get("User-Agent") == "" {
+	if req.Header.Get("User-Agent") == "" && t.UserAgent != "" {
 		req.Header.Set("User-Agent", t.UserAgent)
 	}
 
-	if t.AuthToken != "" {
+	if req.Header.Get("Authorization") == "" && t.AuthToken != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", t.AuthToken))
 	}
 
