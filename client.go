@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -17,6 +18,15 @@ var apiClient *api.Client
 func API() *api.Client {
 
 	createApiOnce.Do(func() {
+		baseURL := os.Getenv("KR_HOST")
+		if baseURL == "" {
+			baseURL = "https://api.kraudcloud.com"
+		}
+
+		base, err := url.Parse(baseURL)
+		if err != nil {
+			panic(err)
+		}
 
 		token := os.Getenv("KR_ACCESS_TOKEN")
 		if token == "" {
@@ -42,9 +52,9 @@ func API() *api.Client {
 			}
 		}
 
-		apiClient = api.NewClient(token)
+		apiClient = api.NewClient(token, base)
 
-		_, err := apiClient.GetUserMe(context.Background())
+		_, err = apiClient.GetUserMe(context.Background())
 		if err != nil {
 			if strings.Contains(err.Error(), "Unauthorized") {
 				fmt.Fprintf(os.Stderr,
