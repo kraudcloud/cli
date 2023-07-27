@@ -1620,6 +1620,7 @@ type KraudPod struct {
 	Replicas           int              `json:"Replicas"`
 	Res                *KraudPod_Res    `json:"Res,omitempty"`
 	RestartPolicy      string           `json:"RestartPolicy"`
+	Status             *KraudPodStatus  `json:"Status,omitempty"`
 	Zone               string           `json:"Zone"`
 }
 
@@ -1631,6 +1632,12 @@ type KraudPod_Res struct {
 // KraudPodList defines model for Kraud.PodList.
 type KraudPodList struct {
 	Items []KraudPod `json:"items"`
+}
+
+// KraudPodStatus defines model for Kraud.PodStatus.
+type KraudPodStatus struct {
+	Display string `json:"Display"`
+	Healthy bool   `json:"Healthy"`
 }
 
 // KraudTenantInfo defines model for Kraud.TenantInfo.
@@ -5300,12 +5307,20 @@ type KraudAppOverview_Config struct {
 
 // KraudAppTemplateConfig defines model for kraud.AppTemplateConfig.
 type KraudAppTemplateConfig struct {
-	Default              string                 `json:"default"`
-	Description          string                 `json:"description"`
-	Kind                 string                 `json:"kind"`
-	Label                string                 `json:"label"`
-	Required             bool                   `json:"required"`
-	AdditionalProperties map[string]interface{} `json:"-"`
+	Default              string                         `json:"default"`
+	Description          string                         `json:"description"`
+	Kind                 string                         `json:"kind"`
+	Label                string                         `json:"label"`
+	Options              []KraudAppTemplateConfigOption `json:"options,omitempty"`
+	Required             bool                           `json:"required"`
+	AdditionalProperties map[string]interface{}         `json:"-"`
+}
+
+// KraudAppTemplateConfigOption defines model for kraud.AppTemplateConfigOption.
+type KraudAppTemplateConfigOption struct {
+	Description string `json:"description"`
+	Label       string `json:"label"`
+	Value       string `json:"value"`
 }
 
 // KraudAppVersion defines model for kraud.AppVersion.
@@ -6798,6 +6813,18 @@ type CreateLayerParams struct {
 
 	// worst case byte size of layer. actual post body may be smaller but not bigger.
 	Maxsize uint64 `json:"maxsize"`
+}
+
+// ListKraudPodsParams defines parameters for ListKraudPods.
+type ListKraudPodsParams struct {
+	// include status
+	Status *bool `json:"status,omitempty"`
+}
+
+// InspectKraudPodParams defines parameters for InspectKraudPod.
+type InspectKraudPodParams struct {
+	// include status
+	Status *bool `json:"status,omitempty"`
 }
 
 // EditKraudPodJSONBody defines parameters for EditKraudPod.
@@ -12333,6 +12360,14 @@ func (a *KraudAppTemplateConfig) UnmarshalJSON(b []byte) error {
 		delete(object, "label")
 	}
 
+	if raw, found := object["options"]; found {
+		err = json.Unmarshal(raw, &a.Options)
+		if err != nil {
+			return fmt.Errorf("error reading 'options': %w", err)
+		}
+		delete(object, "options")
+	}
+
 	if raw, found := object["required"]; found {
 		err = json.Unmarshal(raw, &a.Required)
 		if err != nil {
@@ -12378,6 +12413,13 @@ func (a KraudAppTemplateConfig) MarshalJSON() ([]byte, error) {
 	object["label"], err = json.Marshal(a.Label)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling 'label': %w", err)
+	}
+
+	if a.Options != nil {
+		object["options"], err = json.Marshal(a.Options)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'options': %w", err)
+		}
 	}
 
 	object["required"], err = json.Marshal(a.Required)

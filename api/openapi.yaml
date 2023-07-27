@@ -2158,6 +2158,8 @@ components:
                     type: object
                 RestartPolicy:
                     type: string
+                Status:
+                    $ref: '#/components/schemas/Kraud.PodStatus'
                 Zone:
                     type: string
             required:
@@ -2182,6 +2184,16 @@ components:
                     type: array
             required:
                 - items
+            type: object
+        Kraud.PodStatus:
+            properties:
+                Display:
+                    type: string
+                Healthy:
+                    type: boolean
+            required:
+                - Display
+                - Healthy
             type: object
         Kraud.TenantInfo:
             properties:
@@ -8858,6 +8870,10 @@ components:
                     type: string
                 label:
                     type: string
+                options:
+                    items:
+                        $ref: '#/components/schemas/kraud.AppTemplateConfigOption'
+                    type: array
                 required:
                     type: boolean
             required:
@@ -8866,6 +8882,19 @@ components:
                 - description
                 - default
                 - required
+            type: object
+        kraud.AppTemplateConfigOption:
+            properties:
+                description:
+                    type: string
+                label:
+                    type: string
+                value:
+                    type: string
+            required:
+                - value
+                - label
+                - description
             type: object
         kraud.AppVersion:
             properties:
@@ -10978,6 +11007,13 @@ paths:
     /apis/kraudcloud.com/v1/pods:
         get:
             operationId: listKraudPods
+            parameters:
+                - description: include status
+                  in: query
+                  name: status
+                  required: false
+                  schema:
+                    type: boolean
             responses:
                 200:
                     content:
@@ -10989,6 +11025,12 @@ paths:
         get:
             operationId: inspectKraudPod
             parameters:
+                - description: include status
+                  in: query
+                  name: status
+                  required: false
+                  schema:
+                    type: boolean
                 - description: aid or uuid
                   in: path
                   name: q
