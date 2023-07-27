@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
-func (c *Client) ListPods(ctx context.Context) (*KraudPodList, error) {
+func (c *Client) ListPods(ctx context.Context, withStatus bool) (*KraudPodList, error) {
 
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"GET",
-		"/apis/kraudcloud.com/v1/pods",
+		"/apis/kraudcloud.com/v1/pods?status="+fmt.Sprint(withStatus),
 		nil,
 	)
 

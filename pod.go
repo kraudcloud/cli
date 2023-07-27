@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/fatih/color"
 	"github.com/kraudcloud/cli/api"
 	"github.com/kraudcloud/cli/completions"
 	"github.com/spf13/cobra"
@@ -56,7 +57,7 @@ func podsLs() *cobra.Command {
 }
 
 func podsLsRun(cmd *cobra.Command, args []string) {
-	pods, err := API().ListPods(cmd.Context())
+	pods, err := API().ListPods(cmd.Context(), true)
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +69,7 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 		enc.Encode(pods)
 
 	default:
-		table := NewTable("aid", "namespace", "name", "cpu", "mem", "image")
+		table := NewTable("aid", "namespace", "name", "cpu", "mem", "status", "image")
 		for _, i := range pods.Items {
 
 			var image string
@@ -84,10 +85,33 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 				i.Namespace = i.Namespace[:18] + ".."
 			}
 
+			var status = "?"
+			if i.Status != nil {
+				status = i.Status.Display
+				if i.Status.Healthy {
+					status = color.GreenString(status)
+				} else {
+					status = color.RedString(status)
+				}
+			}
+
+			if len(image) > 23 {
+				ss := strings.Split(image, "/")
+				if len(ss) > 1 {
+					image = ".. " + ss[len(ss)-1]
+				}
+			}
+
+			if len(image) > 23 {
+				image = image[:20] + " .."
+			}
+
 			table.AddRow(i.AID, i.Namespace, i.Name,
 				i.CPU,
 				i.Mem,
-				image)
+				status,
+				image,
+			)
 		}
 		table.Print()
 	}

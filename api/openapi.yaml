@@ -2158,6 +2158,8 @@ components:
                     type: object
                 RestartPolicy:
                     type: string
+                Status:
+                    $ref: '#/components/schemas/Kraud.PodStatus'
                 Zone:
                     type: string
             required:
@@ -2182,6 +2184,16 @@ components:
                     type: array
             required:
                 - items
+            type: object
+        Kraud.PodStatus:
+            properties:
+                Display:
+                    type: string
+                Healthy:
+                    type: boolean
+            required:
+                - Display
+                - Healthy
             type: object
         Kraud.TenantInfo:
             properties:
@@ -11023,6 +11035,13 @@ paths:
     /apis/kraudcloud.com/v1/pods:
         get:
             operationId: listKraudPods
+            parameters:
+                - description: include status
+                  in: query
+                  name: status
+                  required: false
+                  schema:
+                    type: boolean
             responses:
                 200:
                     content:
@@ -11034,6 +11053,12 @@ paths:
         get:
             operationId: inspectKraudPod
             parameters:
+                - description: include status
+                  in: query
+                  name: status
+                  required: false
+                  schema:
+                    type: boolean
                 - description: aid or uuid
                   in: path
                   name: q

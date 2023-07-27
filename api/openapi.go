@@ -1620,6 +1620,7 @@ type KraudPod struct {
 	Replicas           int              `json:"Replicas"`
 	Res                *KraudPod_Res    `json:"Res,omitempty"`
 	RestartPolicy      string           `json:"RestartPolicy"`
+	Status             *KraudPodStatus  `json:"Status,omitempty"`
 	Zone               string           `json:"Zone"`
 }
 
@@ -1631,6 +1632,12 @@ type KraudPod_Res struct {
 // KraudPodList defines model for Kraud.PodList.
 type KraudPodList struct {
 	Items []KraudPod `json:"items"`
+}
+
+// KraudPodStatus defines model for Kraud.PodStatus.
+type KraudPodStatus struct {
+	Display string `json:"Display"`
+	Healthy bool   `json:"Healthy"`
 }
 
 // KraudTenantInfo defines model for Kraud.TenantInfo.
@@ -6815,6 +6822,18 @@ type CreateLayerParams struct {
 
 	// worst case byte size of layer. actual post body may be smaller but not bigger.
 	Maxsize uint64 `json:"maxsize"`
+}
+
+// ListKraudPodsParams defines parameters for ListKraudPods.
+type ListKraudPodsParams struct {
+	// include status
+	Status *bool `json:"status,omitempty"`
+}
+
+// InspectKraudPodParams defines parameters for InspectKraudPod.
+type InspectKraudPodParams struct {
+	// include status
+	Status *bool `json:"status,omitempty"`
 }
 
 // EditKraudPodJSONBody defines parameters for EditKraudPod.
