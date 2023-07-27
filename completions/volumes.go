@@ -13,9 +13,7 @@ func VolumeOptions(client *api.Client, cmd *cobra.Command, args []string, toComp
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	volumes, err := getAside("volumes", client.AuthToken, func() (*api.KraudVolumeList, error) {
-		return client.ListVolumes(cmd.Context())
-	})
+	volumes, err := client.ListVolumes(cmd.Context())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -34,9 +32,7 @@ func VolumeFromArg(ctx context.Context, client *api.Client, arg string) string {
 		newArg = "default/" + newArg
 	}
 
-	volumes, err := getAside("volumes", client.AuthToken, func() (*api.KraudVolumeList, error) {
-		return client.ListVolumes(ctx)
-	})
+	volumes, err := client.ListVolumes(ctx)
 	if err != nil {
 		return arg
 	}

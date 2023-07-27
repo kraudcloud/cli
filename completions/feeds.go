@@ -2,16 +2,13 @@ package completions
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/kraudcloud/cli/api"
 	"github.com/spf13/cobra"
 )
 
 func FeedOptions(client *api.Client, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	feeds, err := getAside("feeds", client.AuthToken, func() (api.KraudFeedList, error) {
-		return client.ListFeeds(cmd.Context())
-	})
+	feeds, err := client.ListFeeds(cmd.Context())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -25,9 +22,7 @@ func FeedOptions(client *api.Client, cmd *cobra.Command, args []string, toComple
 }
 
 func FeedFromArg(ctx context.Context, client *api.Client, arg string) string {
-	feeds, err := getAside("feeds", client.AuthToken, func() (api.KraudFeedList, error) {
-		return client.ListFeeds(ctx)
-	})
+	feeds, err := client.ListFeeds(ctx)
 	if err != nil {
 		return arg
 	}
@@ -43,9 +38,7 @@ func FeedFromArg(ctx context.Context, client *api.Client, arg string) string {
 
 func AppOptions(client *api.Client, feed string, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	feedID := FeedFromArg(cmd.Context(), client, feed)
-	apps, err := getAside(fmt.Sprintf("%s:apps", feedID), client.AuthToken, func() (*api.ListAppsResponse, error) {
-		return client.ListApps(cmd.Context(), feedID)
-	})
+	apps, err := client.ListApps(cmd.Context(), feedID)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
@@ -59,9 +52,7 @@ func AppOptions(client *api.Client, feed string, cmd *cobra.Command, args []stri
 }
 
 func AppFromArg(ctx context.Context, client *api.Client, feedID, arg string) string {
-	apps, err := getAside(fmt.Sprintf("%s:apps", feedID), client.AuthToken, func() (*api.ListAppsResponse, error) {
-		return client.ListApps(ctx, feedID)
-	})
+	apps, err := client.ListApps(ctx, feedID)
 	if err != nil {
 		return arg
 	}
