@@ -88,12 +88,19 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 			var status = "?"
 			if i.Status != nil {
 				status = i.Status.Display
+				if len(status) > len("Terminated") {
+					status = strings.Split(status, " ")[0]
+				}
+				if len(status) > len("Terminated") {
+					status = status[:len("Terminated")]
+				}
 				if i.Status.Healthy {
 					status = color.GreenString(status)
 				} else {
 					status = color.RedString(status)
 				}
 			}
+
 
 			if len(image) > 24 {
 				ss := strings.Split(image, "/")
