@@ -6,9 +6,7 @@ import (
 )
 
 func NamespaceOptions(client *api.Client, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	ns, err := getAside("namespaces", client.AuthToken, func() (*api.K8sNamespaceList, error) {
-		return client.ListNamespaces(cmd.Context())
-	})
+	ns, err := client.ListNamespaces(cmd.Context())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
