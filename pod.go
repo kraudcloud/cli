@@ -95,15 +95,15 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 				}
 			}
 
-			if len(image) > 23 {
+			if len(image) > 24 {
 				ss := strings.Split(image, "/")
 				if len(ss) > 1 {
-					image = ".. " + ss[len(ss)-1]
+					image = ss[len(ss)-1]
 				}
 			}
 
-			if len(image) > 23 {
-				image = image[:20] + " .."
+			if len(image) > 24 {
+				image = image[:23] + ".."
 			}
 
 			table.AddRow(i.AID, i.Namespace, i.Name,
