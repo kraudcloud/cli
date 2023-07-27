@@ -237,6 +237,7 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 func imagePushCMD() *cobra.Command {
 	const defaultComposeFile = "docker-compose.yml"
 	var composeFile string
+	var pushAnyway bool
 
 	c := &cobra.Command{
 		Use:   "push [IMAGE ...]",
@@ -291,7 +292,7 @@ func imagePushCMD() *cobra.Command {
 				localImage, _, _ := docker.ImageInspectWithRaw(cmd.Context(), ref)
 
 				// if both exist and are valid, do nothing
-				if remoteImage != nil && localImage.ID != "" {
+				if remoteImage != nil && localImage.ID != "" && !pushAnyway {
 					if localImage.ID == remoteImage.Amd64.OciID {
 						colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Remote image is up to date")
 						fmt.Println(remoteImage.AID)
@@ -405,6 +406,7 @@ func imagePushCMD() *cobra.Command {
 	}
 
 	c.Flags().StringVarP(&composeFile, "compose-file", "f", defaultComposeFile, "Compose file")
+	c.Flags().BoolVar(&pushAnyway, "push-always", false, "Push anyway even if remote says its up to date")
 
 	return c
 }
