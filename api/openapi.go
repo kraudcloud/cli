@@ -5412,6 +5412,15 @@ type KraudLaunchSettings_Config struct {
 	AdditionalProperties map[string]string `json:"-"`
 }
 
+// KraudLaunchTemplateRequest defines model for kraud.LaunchTemplateRequest.
+type KraudLaunchTemplateRequest struct {
+	// LaunchSettings is the settings for launching an app.
+	Config KraudLaunchSettings `json:"config"`
+
+	// template to launch, akin to a docker-compose file
+	Template string `json:"template"`
+}
+
 // KraudSessionInfo defines model for kraud.SessionInfo.
 type KraudSessionInfo struct {
 	Tenants []KraudSessionTenantInfo `json:"tenants"`
@@ -8684,6 +8693,16 @@ func CreateImageJSON200Response(body KraudCreateImageResponse) *Response {
 // InspectImageJSON200Response is a constructor method for a InspectImage response.
 // A *Response is returned with the configured status code and content type from the spec.
 func InspectImageJSON200Response(body KraudImageName) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// LaunchTemplateJSON200Response is a constructor method for a LaunchTemplate response.
+// A *Response is returned with the configured status code and content type from the spec.
+func LaunchTemplateJSON200Response(body KraudLaunchAppResponse) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,

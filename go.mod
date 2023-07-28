@@ -3,6 +3,7 @@ module github.com/kraudcloud/cli
 go 1.19
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/docker v24.0.4+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.15.0
@@ -15,7 +16,9 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/zalando/go-keyring v0.2.3
+	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	gopkg.in/yaml.v3 v3.0.1
+	mvdan.cc/sh/v3 v3.7.0
 	nhooyr.io/websocket v1.8.7
 )
 

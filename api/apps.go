@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
+	"github.com/kraudcloud/cli/compose"
 	"nhooyr.io/websocket"
 )
 
@@ -62,6 +65,72 @@ func (c *Client) ListApps(ctx context.Context, feedID string) (*ListAppsResponse
 	return &response, nil
 }
 
+type LaunchParams struct {
+	Template  string
+	Env       map[string]string
+	Namespace string
+	Detach    bool
+}
+
+func (c *Client) Launch(ctx context.Context, lp LaunchParams, response io.Writer) error {
+	u := &url.URL{
+		Path: "/apis/kraudcloud.com/v1/launch",
+		RawQuery: url.Values{
+			"namespace": []string{lp.Namespace},
+		}.Encode(),
+	}
+
+	buf := bytes.Buffer{}
+
+	mw := multipart.NewWriter(&buf)
+	err := mw.WriteField("docker-compose.yml", lp.Template)
+	if err != nil {
+		return err
+	}
+
+	ew, err := mw.CreateFormField(".env")
+	if err != nil {
+		return err
+	}
+	err = compose.EncodeEnv(ew, lp.Env)
+	if err != nil {
+		return err
+	}
+
+	err = mw.Close()
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		u.String(),
+		&buf,
+	)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+
+	if lp.Detach {
+		req.Header.Set("Accept", "application/json")
+	}
+
+	resp, err := c.DoRaw(req)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(response, resp.Body)
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+
+	return err
+}
+
 func (c *Client) LaunchApp(ctx context.Context, feedID string, appID string, params KraudLaunchSettings) (*KraudLaunchAppResponse, error) {
 	buf := &bytes.Buffer{}
 	err := json.NewEncoder(buf).Encode(params)
@@ -69,60 +138,58 @@ func (c *Client) LaunchApp(ctx context.Context, feedID string, appID string, par
 		return nil, err
 	}
 
-	path, err := url.JoinPath("/apis/kraudcloud.com/v1/feeds", feedID, "apps", appID, "launch")
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(
+	req, err := http.NewRequestWithContext(
+		ctx,
 		"POST",
-		path,
+		path.Join("/apis/kraudcloud.com/v1/feeds", feedID, "apps", appID, "launch"),
 		buf,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &KraudLaunchAppResponse{}
-	err = c.Do(req, &resp)
+	var response KraudLaunchAppResponse
+	err = c.Do(req, &response)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp, nil
+	return &response, nil
 }
 
 func (c *Client) LaunchAttach(ctx context.Context, w io.Writer, launchID string) error {
-	u := url.URL{
+	u := &url.URL{
 		Scheme: c.BaseURL.Scheme,
 		Host:   c.BaseURL.Host,
-		Path:   path.Join(c.BaseURL.Path, "apis/kraudcloud.com/v1/launch", launchID, "attach"),
+		Path:   path.Join("/apis/kraudcloud.com/v1/launch", launchID, "attach"),
 	}
 
 	conn, _, err := websocket.Dial(ctx, u.String(), &websocket.DialOptions{
 		HTTPClient: c.HTTPClient,
-		HTTPHeader: http.Header{
-			"Authorization": []string{"Bearer " + c.AuthToken},
-		},
 	})
 	if err != nil {
 		return err
 	}
 
-	msgT, msg, err := conn.Read(ctx)
-	for ; err == nil; msgT, msg, err = conn.Read(ctx) {
-		if msgT == websocket.MessageBinary {
-			fmt.Fprintf(w, "message type unexpected: %v\n", msgT)
+	for {
+		t, msgReader, err := conn.Reader(ctx)
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if t != websocket.MessageText {
 			continue
 		}
 
-		err = wsMessage(w, msg)
+		err = CopyWS(w, msgReader)
 		if err != nil {
 			return err
 		}
 	}
-
-	return nil
 }
 
 func MustJSONString(v any) string {
@@ -134,32 +201,34 @@ func MustJSONString(v any) string {
 	return string(b)
 }
 
-func wsMessage(w io.Writer, msg []byte) error {
+func CopyWS(w io.Writer, r io.Reader) error {
+	decoder := json.NewDecoder(r)
 
-	// check for log
-	var log KraudWSLaunchLog
-	err := json.Unmarshal(msg, &log)
-	if err == nil && log.Log != "" {
-		_, err = fmt.Fprintln(w, strings.TrimSpace(log.Log))
-		if err != nil {
+	for {
+		var msg json.RawMessage
+		err := decoder.Decode(&msg)
+		switch {
+		case err == io.EOF:
+			return nil
+		case err != nil:
 			return err
 		}
 
-		return nil
-	}
+		// check for log
+		var log KraudWSLaunchLog
+		err = json.Unmarshal(msg, &log)
+		if err == nil && log.Log != "" {
+			_, err = fmt.Fprintln(w, strings.TrimSpace(log.Log))
+			if err != nil {
+				return err
+			}
+			continue
+		}
 
-	var meta KraudWSLaunchMeta
-	err = json.Unmarshal(msg, &meta)
-	if err != nil {
-		return err
+		var meta KraudWSLaunchMeta
+		err = json.Unmarshal(msg, &meta)
+		if err != nil {
+			return err
+		}
 	}
-
-	switch {
-	case meta.Error != nil:
-		fmt.Fprintf(w, "Error: %s\n", *meta.Error)
-	case meta.DeploymentAids != nil:
-		fmt.Fprintf(w, "Deployment AIDs: %v\n", meta.DeploymentAids)
-	}
-
-	return nil
 }

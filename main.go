@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -38,6 +40,8 @@ func main() {
 	root.AddCommand(psCMD())
 	root.AddCommand(volumesCMD())
 	root.AddCommand(podLogs())
+	root.AddCommand(UpCMD())
+	root.AddCommand(namespacesCMD())
 
 	root.PersistentFlags().StringVarP(&USER_CONTEXT, "context", "c", "default", "user context")
 	root.PersistentFlags().StringVarP(&OUTPUT_FORMAT, "output", "o", "table", "output format (table, json)")
@@ -59,4 +63,10 @@ func main() {
 	}()
 
 	root.Execute()
+}
+
+func indentJSONEncoder(w io.Writer, data any) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(data)
 }
