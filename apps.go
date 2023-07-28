@@ -199,9 +199,10 @@ type errResp struct {
 	Error   string `json:"error"`
 }
 
+// TODO: maybe support .env files?
 func appsRun() *cobra.Command {
 	feed := ""
-	appArgs := map[string]string{}
+	env := map[string]string{}
 	namespace := "default"
 
 	c := &cobra.Command{
@@ -221,7 +222,7 @@ func appsRun() *cobra.Command {
 
 			body := api.KraudLaunchSettings{
 				Config: api.KraudLaunchSettings_Config{
-					AdditionalProperties: appArgs,
+					AdditionalProperties: env,
 				},
 				ProjectName: namespace,
 			}
@@ -246,7 +247,7 @@ func appsRun() *cobra.Command {
 	})
 
 	c.Flags().StringVarP(&namespace, "namespace", "n", namespace, "namespace to run the app in")
-	c.Flags().StringToStringVarP(&appArgs, "args", "a", appArgs, "arguments to pass to the app")
+	c.Flags().StringToStringVarP(&env, "env", "e", env, "environment to pass to the app")
 	c.Flags().BoolP("detach", "d", false, "detach from the app launch process")
 	return c
 }
