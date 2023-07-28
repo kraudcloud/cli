@@ -139,9 +139,11 @@ type EnvExprRhs struct {
 }
 
 // GetTemplateVars returns a map of environment variables that are referenced in the given reader
+//
 // The map key is the variable name, and the value is the right hand side of the expression
 func GetTemplateVars(r io.Reader) map[string]EnvExprRhs {
-	w, err := syntax.NewParser().Parse(r, "")
+
+	w, err := syntax.NewParser().Document(r)
 	if err != nil {
 		return nil
 	}
@@ -150,28 +152,62 @@ func GetTemplateVars(r io.Reader) map[string]EnvExprRhs {
 	syntax.Walk(w, func(node syntax.Node) bool {
 		switch x := node.(type) {
 		case *syntax.ParamExp:
-			ev := EnvExprRhs{}
-			defer func() {
-				vars[x.Param.Value] = ev
-			}()
-
-			if x.Exp == nil || x.Exp.Word == nil {
+			x.Param.Value = strings.Trim(x.Param.Value, "$ ")
+			if x.Param == nil || x.Param.Value == "" {
 				return true
 			}
 
-			switch x.Exp.Op {
-			case syntax.DefaultUnset, syntax.DefaultUnsetOrNull:
-				ev.Default = x.Exp.Word.Lit()
-			case syntax.ErrorUnset, syntax.ErrorUnsetOrNull:
-				ev.Error = x.Exp.Word.Lit()
+			if x.Exp == nil || x.Exp.Word == nil {
+				vars[x.Param.Value] = EnvExprRhs{}
+				return true
 			}
 
+			s := StringsJoinFunc(joinLits, "", x.Exp.Word.Parts)
+			switch x.Exp.Op {
+			case syntax.DefaultUnset, syntax.DefaultUnsetOrNull:
+				vars[x.Param.Value] = EnvExprRhs{
+					Default: s,
+				}
+			case syntax.ErrorUnset, syntax.ErrorUnsetOrNull:
+				vars[x.Param.Value] = EnvExprRhs{
+					Error: s,
+				}
+			}
 		}
 
 		return true
 	})
 
 	return vars
+}
+
+func joinLits(wp syntax.WordPart) string {
+	if _, ok := wp.(*syntax.ParamExp); ok {
+		return ""
+	}
+
+	if _, ok := wp.(*syntax.Lit); ok {
+		return wp.(*syntax.Lit).Value
+	}
+
+	if _, ok := wp.(*syntax.SglQuoted); ok {
+		return wp.(*syntax.SglQuoted).Value
+	}
+
+	if _, ok := wp.(*syntax.DblQuoted); ok {
+		return StringsJoinFunc(joinLits, "", wp.(*syntax.DblQuoted).Parts)
+	}
+
+	return ""
+}
+
+func StringsJoinFunc[T any](f func(T) string, sep string, vals []T) string {
+	var out []string
+	for _, v := range vals {
+		out = append(out, f(v))
+	}
+
+	return strings.Join(out, sep)
 }
 
 const toEscape = " \t\n\"'\\$"

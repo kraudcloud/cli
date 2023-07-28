@@ -72,6 +72,25 @@ func TestFindTemplateVars(t *testing.T) {
 			in:   NginxGolangMYSQLYAML,
 			out:  map[string]EnvExprRhs{},
 		},
+		{
+			name: "quoted values",
+			in: `
+      ${INGRESS:-"https://umami.*"}
+      ${INGRESS2?'https://umami.*'}
+      ${INGRESS3:-https://umami.*}
+      `,
+			out: map[string]EnvExprRhs{
+				"INGRESS": {
+					Default: "https://umami.*",
+				},
+				"INGRESS2": {
+					Error: "https://umami.*",
+				},
+				"INGRESS3": {
+					Default: "https://umami.*",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {

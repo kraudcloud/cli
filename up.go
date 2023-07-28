@@ -12,7 +12,7 @@ import (
 
 func UpCMD() *cobra.Command {
 	namespace := "default"
-	env := []string{}
+	env := map[string]string{}
 	envFile := ".env"
 
 	c := &cobra.Command{
@@ -32,7 +32,7 @@ func UpCMD() *cobra.Command {
 			// needed env neededVars
 			neededVars := compose.GetTemplateVars(bytes.NewReader(template))
 			loaders := []compose.EnvLoader{
-				compose.LoadKVSlice(env),
+				compose.LoadKV(env),
 				compose.LoadKVSlice(os.Environ()),
 			}
 
@@ -75,7 +75,7 @@ func UpCMD() *cobra.Command {
 
 	c.Flags().StringVarP(&namespace, "namespace", "n", namespace, "namespace to use")
 	c.Flags().BoolP("detach", "d", false, "detach from the application")
-	c.Flags().StringSliceVarP(&env, "env", "e", env, "set environment variables")
+	c.Flags().StringToStringVarP(&env, "env", "e", env, "set environment variables")
 	c.Flags().StringVar(&envFile, "env-file", envFile, "set environment variables from a file")
 	return c
 }
