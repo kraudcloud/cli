@@ -173,3 +173,24 @@ func GetTemplateVars(r io.Reader) map[string]EnvExprRhs {
 
 	return vars
 }
+
+const toEscape = " \t\n\"'\\$"
+
+func EncodeEnv(w io.Writer, env map[string]string) error {
+	var replacer []string
+	for _, c := range toEscape {
+		replacer = append(replacer, string(c), "\\"+string(c))
+	}
+
+	r := strings.NewReplacer(replacer...)
+	sw := bufio.NewWriter(w)
+
+	for k, v := range env {
+		sw.WriteString(k)
+		sw.WriteString("=")
+		sw.WriteString(r.Replace(v))
+		sw.WriteString("\n")
+	}
+
+	return sw.Flush()
+}

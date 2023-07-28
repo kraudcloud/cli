@@ -52,27 +52,24 @@ func UpCMD() *cobra.Command {
 			}
 
 			// load env vars
-			envVars, err := compose.LoadEnv(neededVars, loaders...)
+			env, err := compose.LoadEnv(neededVars, loaders...)
 			if err != nil {
 				return err
 			}
 
-			launchConfig, err := API().Launch(cmd.Context(), string(template), api.KraudLaunchSettings{
-				Config: api.KraudLaunchSettings_Config{
-					AdditionalProperties: envVars,
-				},
-				ProjectName: namespace,
-			})
+			detach, _ := cmd.Flags().GetBool("detach")
+
+			err = API().Launch(cmd.Context(), api.LaunchParams{
+				Template:  string(template),
+				Env:       env,
+				Namespace: namespace,
+				Detach:    detach,
+			}, os.Stdout)
 			if err != nil {
 				return fmt.Errorf("failed to launch application: %w", err)
 			}
 
-			if v, _ := cmd.Flags().GetBool("detach"); v {
-				cmd.Printf("Application launched: %s\n", launchConfig.LaunchID)
-				return nil
-			}
-
-			return API().LaunchAttach(cmd.Context(), os.Stdout, launchConfig.LaunchID)
+			return nil
 		},
 	}
 
