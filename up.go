@@ -26,6 +26,7 @@ func UpCMD() *cobra.Command {
 
 			template, err := os.ReadFile(file)
 			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error reading docker-compose file: %v\n", err)
 				return err
 			}
 
@@ -43,7 +44,8 @@ func UpCMD() *cobra.Command {
 				case os.IsNotExist(err):
 					break
 				case err != nil:
-					return err
+					fmt.Fprintf(cmd.ErrOrStderr(), "error reading env file: %v\n", err)
+					return nil
 				}
 
 				defer f.Close()
@@ -54,7 +56,8 @@ func UpCMD() *cobra.Command {
 			// load env vars
 			env, err := compose.LoadEnv(neededVars, loaders...)
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error loading env vars: %v\n", err)
+				return nil
 			}
 
 			detach, _ := cmd.Flags().GetBool("detach")
@@ -66,7 +69,8 @@ func UpCMD() *cobra.Command {
 				Detach:    detach,
 			}, os.Stdout)
 			if err != nil {
-				return fmt.Errorf("failed to launch application: %w", err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error launching app: %v\n", err)
+				return nil
 			}
 
 			return nil

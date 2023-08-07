@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/kraudcloud/cli/completions"
@@ -31,7 +32,8 @@ func namespacesListCMD() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, err := API().ListNamespaces(cmd.Context())
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error listing namespaces: %v\n", err)
+				return nil
 			}
 
 			t := NewTable("NAME", "CREATED")
@@ -40,7 +42,6 @@ func namespacesListCMD() *cobra.Command {
 			}
 
 			t.Print()
-
 			return nil
 		},
 	}
@@ -59,7 +60,14 @@ func namespacesDeleteCMD() *cobra.Command {
 			return completions.NamespaceOptions(API(), cmd, args, toComplete)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return API().DeleteNamespace(cmd.Context(), args[0], force)
+			err := API().DeleteNamespace(cmd.Context(), args[0], force)
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error deleting namespace: %v\n", err)
+				return nil
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "namespace %q deleted\n", args[0])
+			return nil
 		},
 	}
 
@@ -80,10 +88,11 @@ func namespacesInspectCMD() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, err := API().NamespaceOverview(cmd.Context(), args[0])
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error inspecting namespace: %v\n", err)
+				return nil
 			}
 
-			return indentJSONEncoder(cmd.OutOrStdout(), ns)
+			return identJSONEncoder(cmd.OutOrStdout(), ns)
 		},
 	}
 

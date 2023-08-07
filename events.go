@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/kraudcloud/cli/api"
-	"github.com/mitchellh/colorstring"
-	"github.com/spf13/cobra"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/kraudcloud/cli/api"
+	"github.com/mitchellh/colorstring"
+	"github.com/spf13/cobra"
 )
 
 func eventsCMD() *cobra.Command {
@@ -107,7 +108,7 @@ func eventsCMD() *cobra.Command {
 				}
 
 				if ev.Details != nil {
-					s += fmt.Sprintf("  details: \n")
+					s += "  details: \n"
 					for k, v := range *ev.Details {
 						s += fmt.Sprintf("    %s: %v \n", k, v)
 					}

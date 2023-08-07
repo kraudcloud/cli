@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
 
+	"github.com/kraudcloud/cli/api"
 	"github.com/spf13/cobra"
 )
 
@@ -29,10 +26,10 @@ func feedsLs() *cobra.Command {
 		Use:   "ls",
 		Short: "List feeds",
 		Run: func(cmd *cobra.Command, _ []string) {
-
 			feeds, err := API().ListFeeds(cmd.Context())
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error listing feeds: %v\n", err)
+				return
 			}
 
 			table := NewTable("ID", "Name")
@@ -58,41 +55,19 @@ func feedCreate() *cobra.Command {
 		Aliases: []string{"new"},
 		Short:   "Create feed",
 		Args:    cobra.ExactArgs(1),
-		Run: func(_ *cobra.Command, args []string) {
-
+		Run: func(cmd *cobra.Command, args []string) {
 			name := args[0]
 
-			b := struct {
-				Name    string `json:"name"`
-				IconURL string `json:"icon_url"`
-			}{
+			feed, err := API().CreateFeed(cmd.Context(), api.KraudCreateFeed{
 				Name:    name,
 				IconURL: iconURL,
-			}
-
-			buf := &bytes.Buffer{}
-			json.NewEncoder(buf).Encode(b)
-
-			req, err := http.NewRequest(
-				"POST",
-				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds"),
-				buf,
-			)
+			})
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error creating feed: %v\n", err)
+				return
 			}
 
-			req.Header.Add("Content-Type", "application/json")
-
-			var rsp map[string]interface{}
-
-			err = API().Do(req, &rsp)
-			if err != nil {
-				log.Fatalln(err)
-			}
-
-			json.NewEncoder(os.Stdout).Encode(rsp)
-
+			fmt.Printf("Feed %s created\n", feed.ID)
 		},
 	}
 

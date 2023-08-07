@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/dustin/go-humanize"
 	"github.com/kraudcloud/cli/completions"
@@ -33,15 +31,13 @@ func volumeLs() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			vv, err := API().ListVolumes(cmd.Context())
 			if err != nil {
-				panic(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error listing volumes: %v\n", err)
+				return
 			}
 
 			switch OUTPUT_FORMAT {
 			case "json":
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				enc.Encode(vv)
-
+				identJSONEncoder(cmd.OutOrStdout(), vv)
 			default:
 				table := NewTable("aid", "name", "class", "zone", "size")
 				for _, i := range vv.Items {
@@ -72,7 +68,8 @@ func volumeRm() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			err := API().DeleteVolume(cmd.Context(), args[0])
 			if err != nil {
-				panic(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error deleting volume: %v\n", err)
+				return
 			}
 			fmt.Println("deleted")
 		},

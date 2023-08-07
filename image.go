@@ -9,7 +9,6 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"io/ioutil"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -134,7 +133,7 @@ func imageExtractFromDocker(ctx context.Context, serviceName string, ref string)
 			return nil, err
 		}
 
-		file, err := ioutil.TempFile("", "dockersave")
+		file, err := os.CreateTemp("", "dockersave")
 		if err != nil {
 			panic(err)
 		}
@@ -346,7 +345,7 @@ func imagePushCMD() *cobra.Command {
 					} `json:"rootfs"`
 				}
 
-				configString, err := ioutil.ReadFile(files[manifest[0].Config].tempfile)
+				configString, err := os.ReadFile(files[manifest[0].Config].tempfile)
 				if err != nil {
 					panic(err)
 				}

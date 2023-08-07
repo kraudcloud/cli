@@ -65,7 +65,7 @@ func main() {
 	root.Execute()
 }
 
-func indentJSONEncoder(w io.Writer, data any) error {
+func identJSONEncoder(w io.Writer, data any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(data)

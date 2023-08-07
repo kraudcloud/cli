@@ -1,12 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"mime/multipart"
-	"net/http"
 	"os"
 
 	"github.com/kraudcloud/cli/api"
@@ -30,7 +25,6 @@ func appsCMD() *cobra.Command {
 }
 
 func appsLs() *cobra.Command {
-
 	feed := ""
 
 	c := &cobra.Command{
@@ -39,27 +33,14 @@ func appsLs() *cobra.Command {
 		Aliases: []string{"l"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			feedID := completions.FeedFromArg(cmd.Context(), API(), feed)
-			req, err := http.NewRequest(
-				"GET",
-				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/apps", feedID),
-				nil,
-			)
+
+			apps, err := API().ListApps(cmd.Context(), feedID)
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error listing apps: %v\n", err)
+				return nil
 			}
 
-			partial := struct {
-				Apps []any `json:"apps"`
-			}{}
-
-			err = API().Do(req, &partial)
-			if err != nil {
-				return err
-			}
-
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			return enc.Encode(partial)
+			return identJSONEncoder(cmd.OutOrStdout(), apps)
 		},
 	}
 
@@ -84,51 +65,17 @@ func appsPush() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			feedID := completions.FeedFromArg(cmd.Context(), API(), feed)
 
-			buf := &bytes.Buffer{}
-
-			body := multipart.NewWriter(buf)
-			file, err := body.CreateFormFile("template", "template.yaml")
+			template, err := os.Open(args[0])
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error opening app.yaml: %v\n", err)
+				return nil
 			}
+			defer template.Close()
 
-			f, err := os.Open(args[0])
+			err = API().PushApp(cmd.Context(), feedID, template, changelog)
 			if err != nil {
-				return err
-			}
-			defer f.Close()
-
-			_, err = io.Copy(file, f)
-			if err != nil {
-				return err
-			}
-
-			if changelog != "" {
-				err = body.WriteField("changelog", changelog)
-				if err != nil {
-					return err
-				}
-			}
-
-			err = body.Close()
-			if err != nil {
-				return err
-			}
-
-			req, err := http.NewRequest(
-				"PUT",
-				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/app", feedID),
-				buf,
-			)
-			if err != nil {
-				return err
-			}
-
-			req.Header.Set("Content-Type", body.FormDataContentType())
-
-			err = API().Do(req, nil)
-			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error pushing app: %v\n", err)
+				return nil
 			}
 
 			return nil
@@ -165,23 +112,13 @@ func appsInspect() *cobra.Command {
 			feedID := completions.FeedFromArg(cmd.Context(), API(), feed)
 			appID := completions.AppFromArg(cmd.Context(), API(), feedID, args[0])
 
-			req, err := http.NewRequest(
-				"GET",
-				fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/apps/%s/template", feedID, appID),
-				nil,
-			)
+			app, err := API().InspectApp(cmd.Context(), feedID, appID)
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error inspecting app: %v\n", err)
+				return nil
 			}
 
-			var resp = map[string]interface{}{}
-
-			err = API().Do(req, &resp)
-			if err != nil {
-				return err
-			}
-
-			return json.NewEncoder(os.Stdout).Encode(resp)
+			return identJSONEncoder(cmd.OutOrStdout(), app)
 		},
 	}
 
@@ -229,14 +166,21 @@ func appsRun() *cobra.Command {
 
 			resp, err := API().LaunchApp(cmd.Context(), feedID, appID, body)
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error launching app: %v\n", err)
+				return nil
 			}
 
 			if ok, _ := cmd.Flags().GetBool("detach"); ok {
 				return nil
 			}
 
-			return API().LaunchAttach(cmd.Context(), os.Stdout, resp.LaunchID)
+			err = API().LaunchAttach(cmd.Context(), os.Stdout, resp.LaunchID)
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error attaching to app: %v\n", err)
+				return nil
+			}
+
+			return nil
 		},
 	}
 

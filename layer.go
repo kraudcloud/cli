@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
@@ -23,10 +25,10 @@ func layersLs() *cobra.Command {
 		Use:   "ls",
 		Short: "List remote layers",
 		Run: func(cmd *cobra.Command, _ []string) {
-
 			ls, err := API().ListLayers(cmd.Context())
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error listing layers: %v\n", err)
+				return
 			}
 
 			table := NewTable("ID", "Size", "OciID", "Refcount", "Sha256")

@@ -2,10 +2,8 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"encoding/pem"
-	"io/ioutil"
-	"net/http"
+	"fmt"
 	"net/url"
 	"os"
 
@@ -34,63 +32,36 @@ func idpCreate() *cobra.Command {
 	var name string
 	var namespace string
 	var protocol string
-	var svc_metadata_url string
+	var metadataURL string
 
 	c := &cobra.Command{
 		Use:     "new",
 		Short:   "Create an identity provider",
 		Aliases: []string{"add", "new"},
-		Run: func(cmd *cobra.Command, _ []string) {
-
-			metadata := ""
-
-			u, err := url.Parse(svc_metadata_url)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			u, err := url.Parse(metadataURL)
 			if err != nil {
-				log.Fatalln(err)
+				return fmt.Errorf("error parsing url: %v", err)
 			}
 
-			if u.Scheme == "http" || u.Scheme == "https" {
-				resp, err := http.Get(u.String())
-				if err != nil {
-					log.Fatalln(err)
-				}
-				defer resp.Body.Close()
-
-				body, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					log.Fatalln(err)
-				}
-				metadata = string(body)
-			} else {
-
-				f, err := os.Open(u.Path)
-				if err != nil {
-					log.Fatalln(err)
-				}
-				defer f.Close()
-
-				body, err := ioutil.ReadAll(f)
-				if err != nil {
-					log.Fatalln(err)
-				}
-
-				metadata = string(body)
+			meta, err := ReadURI(cmd.Context(), *u)
+			if err != nil {
+				return fmt.Errorf("error reading metadata: %v", err)
 			}
-
-			b64metadata := base64.StdEncoding.EncodeToString([]byte(metadata))
 
 			ig, err := API().CreateIDP(cmd.Context(),
 				name,
 				namespace,
 				protocol,
-				b64metadata,
+				base64.StdEncoding.EncodeToString(meta),
 			)
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error creating identity provider: %v\n", err)
+				return nil
 			}
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			enc.Encode(ig)
+
+			fmt.Fprintf(cmd.OutOrStdout(), "identity provider %s created\n", ig.Name)
+			return nil
 		},
 	}
 
@@ -108,7 +79,7 @@ func idpCreate() *cobra.Command {
 	c.RegisterFlagCompletionFunc("proto", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
-	c.Flags().StringVar(&svc_metadata_url, "svc", "", "service metadata url or local file")
+	c.Flags().StringVar(&metadataURL, "svc", "", "service metadata url or local file")
 	c.MarkFlagRequired("svc")
 
 	return c
@@ -120,10 +91,10 @@ func idpLs() *cobra.Command {
 		Use:   "ls",
 		Short: "List identity providers",
 		Run: func(cmd *cobra.Command, _ []string) {
-
 			ig, err := API().ListIDPs(cmd.Context())
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error listing identity providers: %v\n", err)
+				return
 			}
 
 			table := NewTable("ID", "Name", "Protocol")
@@ -131,7 +102,6 @@ func idpLs() *cobra.Command {
 				table.AddRow(*idp.ID, idp.Namespace+"/"+idp.Name, idp.Protocol)
 			}
 			table.Print()
-
 		},
 	}
 
@@ -152,13 +122,11 @@ func idpGet() *cobra.Command {
 			id := completions.IDPFromArg(cmd.Context(), API(), args[0])
 			ig, err := API().InspectIDP(cmd.Context(), id)
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error inspecting identity provider: %v\n", err)
+				return
 			}
 
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			enc.Encode(ig)
-
+			identJSONEncoder(cmd.OutOrStdout(), ig)
 		},
 	}
 
@@ -178,12 +146,14 @@ func idpCert() *cobra.Command {
 			id := completions.IDPFromArg(cmd.Context(), API(), args[0])
 			ig, err := API().InspectIDP(cmd.Context(), id)
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error inspecting identity provider: %v\n", err)
+				return
 			}
 
 			der, err := base64.StdEncoding.DecodeString(*ig.IdpCert)
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error decoding certificate: %v\n", err)
+				return
 			}
 
 			block := &pem.Block{
@@ -192,7 +162,6 @@ func idpCert() *cobra.Command {
 			}
 
 			pem.Encode(os.Stdout, block)
-
 		},
 	}
 
@@ -213,9 +182,9 @@ func idpDelete() *cobra.Command {
 			id := completions.IDPFromArg(cmd.Context(), API(), args[0])
 			err := API().DeleteIDP(cmd.Context(), id)
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error deleting identity provider: %v\n", err)
+				return
 			}
-
 		},
 	}
 

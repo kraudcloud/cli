@@ -1,9 +1,10 @@
 package main
 
 import (
-	"encoding/json"
-	"github.com/spf13/cobra"
+	"fmt"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
 func usersCMD() *cobra.Command {
@@ -27,13 +28,11 @@ func usersMe() *cobra.Command {
 
 			me, err := API().GetUserMe(cmd.Context())
 			if err != nil {
-				log.Fatalln(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error getting user: %v\n", err)
+				return
 			}
 
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			enc.Encode(me)
-
+			identJSONEncoder(os.Stdout, me)
 		},
 	}
 

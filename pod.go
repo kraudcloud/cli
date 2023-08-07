@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -59,7 +59,8 @@ func podsLs() *cobra.Command {
 func podsLsRun(cmd *cobra.Command, args []string) {
 	pods, err := API().ListPods(cmd.Context(), true)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "error getting pods: %v\n", err)
+		return
 	}
 
 	switch OUTPUT_FORMAT {
@@ -77,10 +78,7 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 				image = i.Containers[0].ImageName
 			}
 
-			if strings.HasPrefix(image, "index.docker.io/library/") {
-				image = strings.TrimPrefix(image, "index.docker.io/library/")
-			}
-
+			image = strings.TrimPrefix(image, "index.docker.io/library/")
 			if len(i.Namespace) > 20 {
 				i.Namespace = i.Namespace[:18] + ".."
 			}
@@ -100,7 +98,6 @@ func podsLsRun(cmd *cobra.Command, args []string) {
 					status = color.RedString(status)
 				}
 			}
-
 
 			if len(image) > 24 {
 				ss := strings.Split(image, "/")
@@ -137,17 +134,11 @@ func podsInspect() *cobra.Command {
 			aid := completions.PodFromArg(cmd.Context(), API(), args[0])
 			pod, err := API().InspectPod(cmd.Context(), aid)
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error getting pod: %v\n", err)
+				return nil
 			}
 
-			switch OUTPUT_FORMAT {
-			default:
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				enc.Encode(pod)
-			}
-
-			return nil
+			return identJSONEncoder(cmd.OutOrStdout(), pod)
 		},
 	}
 	return c
@@ -166,7 +157,8 @@ func podsEdit() *cobra.Command {
 			aid := completions.PodFromArg(cmd.Context(), API(), args[0])
 			pod, err := API().InspectPod(cmd.Context(), aid)
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error getting pod: %v\n", err)
+				return nil
 			}
 
 			editor := os.Getenv("EDITOR")
@@ -174,9 +166,10 @@ func podsEdit() *cobra.Command {
 				editor = "vi"
 			}
 
-			tmpfile, err := ioutil.TempFile("", "kra-pod-")
+			tmpfile, err := os.CreateTemp("", "kra-pod-")
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error creating temp file: %v\n", err)
+				return nil
 			}
 			defer os.Remove(tmpfile.Name())
 
@@ -187,7 +180,8 @@ func podsEdit() *cobra.Command {
 
 			str, err := json.MarshalIndent(pod, "", "  ")
 			if err != nil {
-				panic(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error marshalling pod: %v\n", err)
+				return nil
 			}
 
 			tmpfile.Write(str)
@@ -202,12 +196,14 @@ func podsEdit() *cobra.Command {
 				err = edit.Run()
 
 				if err != nil {
-					panic(err)
+					fmt.Fprintf(cmd.ErrOrStderr(), "error running editor: %v\n", err)
+					return nil
 				}
 
 				strNu, err := os.ReadFile(tmpfile.Name())
 				if err != nil {
-					panic(err)
+					fmt.Fprintf(cmd.ErrOrStderr(), "error reading file: %v\n", err)
+					return nil
 				}
 
 				if string(str) == string(strNu) {
@@ -264,7 +260,8 @@ func podLogs() *cobra.Command {
 			aid := completions.PodFromArg(ctx, API(), args[0])
 			c, err := dockerClient.ContainerInspect(ctx, aid)
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error getting container: %v\n", err)
+				return nil
 			}
 
 			options := types.ContainerLogsOptions{
@@ -275,7 +272,8 @@ func podLogs() *cobra.Command {
 			}
 			responseBody, err := dockerClient.ContainerLogs(ctx, c.ID, options)
 			if err != nil {
-				return err
+				fmt.Fprintf(cmd.ErrOrStderr(), "error getting logs: %v\n", err)
+				return nil
 			}
 			defer responseBody.Close()
 
@@ -285,7 +283,12 @@ func podLogs() *cobra.Command {
 				_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, responseBody)
 			}
 
-			return err
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error copying logs: %v\n", err)
+				return nil
+			}
+
+			return nil
 		},
 	}
 

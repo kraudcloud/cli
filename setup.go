@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
+
+	"github.com/spf13/cobra"
 )
 
 func setupCMD() *cobra.Command {
@@ -29,12 +30,14 @@ func dockerSetupCmd() *cobra.Command {
 
 			me, err := API().GetUserMe(cmd.Context())
 			if err != nil {
-				panic(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error getting user: %v\n", err)
+				return
 			}
 
 			z, err := API().RotateUserCredentials(cmd.Context(), ".me", tokenName, "docker")
 			if err != nil {
-				panic(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error rotating credentials: %v\n", err)
+				return
 			}
 
 			docker := exec.Command("docker", "context", "import", "kraud."+me.Tenant.Org, "-")
@@ -44,7 +47,8 @@ func dockerSetupCmd() *cobra.Command {
 
 			err = docker.Run()
 			if err != nil {
-				panic(err)
+				fmt.Fprintf(cmd.ErrOrStderr(), "error importing context: %v\n", err)
+				return
 			}
 
 			fmt.Println("")

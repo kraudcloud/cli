@@ -62,9 +62,9 @@ func getToken() (string, error) {
 		context = fmt.Sprintf(" -c %s", USER_CONTEXT)
 	}
 
-	return "", fmt.Errorf(`No token available.
+	return "", fmt.Errorf(`no token available.
 	Go to https://kraudcloud.com/profile and create a token, then set with `+"`kra%s login <token>`"+`
-	Or set the KR_ACCESS_TOKEN environment variable.`, context)
+	Or set the KR_ACCESS_TOKEN environment variable`, context)
 }
 
 func getMe(ctx context.Context, apiClient *api.Client, token string) error {
@@ -74,7 +74,7 @@ func getMe(ctx context.Context, apiClient *api.Client, token string) error {
 	}
 
 	if strings.Contains(err.Error(), "Unauthorized") {
-		return fmt.Errorf(`Invalid or expired token.
+		return fmt.Errorf(`ivalid or expired token.
 Go to https://kraudcloud.com/profile and create a token, then set with `+"`kra login <token>`"+`
 Or set the KR_ACCESS_TOKEN environment variable.\n\n%w`, err)
 	}

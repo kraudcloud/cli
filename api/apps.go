@@ -39,6 +39,70 @@ func (c *Client) ListFeeds(ctx context.Context) (KraudFeedList, error) {
 	return response, nil
 }
 
+func (c *Client) CreateFeed(ctx context.Context, kcf KraudCreateFeed) (*KraudFeed, error) {
+	buf := &bytes.Buffer{}
+	json.NewEncoder(buf).Encode(kcf)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		"/apis/kraudcloud.com/v1/feeds",
+		buf,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var response KraudFeed
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response, nil
+}
+
+func (c *Client) PushApp(ctx context.Context, feedID string, template io.Reader, changelog string) error {
+	buf := &bytes.Buffer{}
+
+	body := multipart.NewWriter(buf)
+	file, err := body.CreateFormFile("template", "template.yaml")
+	if err != nil {
+		return fmt.Errorf("error creating form file: %w", err)
+	}
+
+	io.Copy(file, template)
+	if changelog != "" {
+		err = body.WriteField("changelog", changelog)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = body.Close()
+	if err != nil {
+		return fmt.Errorf("error closing multipart writer: %w", err)
+	}
+
+	req, err := http.NewRequest(
+		"PUT",
+		fmt.Sprintf("/apis/kraudcloud.com/v1/feeds/%s/app", feedID),
+		buf,
+	)
+	if err != nil {
+		return fmt.Errorf("error creating request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", body.FormDataContentType())
+
+	err = c.Do(req, nil)
+	if err != nil {
+		return fmt.Errorf("error pushing app: %w", err)
+	}
+
+	return nil
+}
+
 type ListAppsResponse struct {
 	Items []KraudAppOverview `json:"apps"`
 }
@@ -57,6 +121,26 @@ func (c *Client) ListApps(ctx context.Context, feedID string) (*ListAppsResponse
 	}
 
 	var response ListAppsResponse
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response, nil
+}
+
+func (c *Client) InspectApp(ctx context.Context, feedID string, appID string) (*KraudAppOverview, error) {
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"GET",
+		path.Join("/apis/kraudcloud.com/v1/feeds", feedID, "apps", appID, "template"),
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	response := KraudAppOverview{}
 	err = c.Do(req, &response)
 	if err != nil {
 		return nil, err
