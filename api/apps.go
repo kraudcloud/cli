@@ -13,7 +13,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/kraudcloud/cli/compose"
+	"github.com/kraudcloud/cli/compose/envparser"
 	"nhooyr.io/websocket"
 )
 
@@ -176,7 +176,7 @@ func (c *Client) Launch(ctx context.Context, lp LaunchParams, response io.Writer
 	if err != nil {
 		return err
 	}
-	err = compose.EncodeEnv(ew, lp.Env)
+	err = envparser.EncodeEnv(ew, lp.Env)
 	if err != nil {
 		return err
 	}

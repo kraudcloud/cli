@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/kraudcloud/cli/api"
-	"github.com/kraudcloud/cli/compose"
+	"github.com/kraudcloud/cli/compose/envparser"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +14,7 @@ func UpCMD() *cobra.Command {
 	namespace := "default"
 	env := map[string]string{}
 	envFile := ".env"
+	verbose := 0
 
 	c := &cobra.Command{
 		Use:   "up [docker-compose file]",
@@ -31,10 +32,15 @@ func UpCMD() *cobra.Command {
 			}
 
 			// needed env neededVars
-			neededVars := compose.GetTemplateVars(bytes.NewReader(template))
-			loaders := []compose.EnvLoader{
-				compose.LoadKV(env),
-				compose.LoadKVSlice(os.Environ()),
+			neededVars, err := envparser.ParseTemplateVars(bytes.NewReader(template))
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error getting needed env vars: %v\n", err)
+				return err
+			}
+
+			loaders := []envparser.EnvLoader{
+				envparser.LoadKV(env),
+				envparser.LoadKVs(os.Environ()),
 			}
 
 			// load env vars from file
@@ -50,14 +56,29 @@ func UpCMD() *cobra.Command {
 
 				defer f.Close()
 
-				loaders = append(loaders, compose.LoadEnvReader(f))
+				loaders = append(loaders, envparser.LoadEnvReader(f))
 			}
 
 			// load env vars
-			env, err := compose.LoadEnv(neededVars, loaders...)
+			env, err := envparser.LoadEnv(neededVars, loaders...)
 			if err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "error loading env vars: %v\n", err)
 				return nil
+			}
+
+			if verbose > 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "looking for env vars:\n")
+				for k, v := range neededVars {
+					fmt.Fprintf(cmd.ErrOrStderr(), "  %s", k)
+					if v.Default != "" {
+						fmt.Fprintf(cmd.ErrOrStderr(), "(default: %s)", v.Default)
+					}
+				}
+
+				fmt.Fprintf(cmd.ErrOrStderr(), "env vars:\n")
+				for k, v := range env {
+					fmt.Fprintf(cmd.ErrOrStderr(), "  %s=%s\n", k, v)
+				}
 			}
 
 			detach, _ := cmd.Flags().GetBool("detach")
@@ -81,6 +102,7 @@ func UpCMD() *cobra.Command {
 	c.Flags().BoolP("detach", "d", false, "detach from the application")
 	c.Flags().StringToStringVarP(&env, "env", "e", env, "set environment variables")
 	c.Flags().StringVar(&envFile, "env-file", envFile, "set environment variables from a file")
+	c.Flags().CountVarP(&verbose, "verbose", "v", "verbose output")
 	return c
 }
 
