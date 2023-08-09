@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/kraudcloud/cli/api"
 	"github.com/kraudcloud/cli/compose/envparser"
@@ -11,7 +12,14 @@ import (
 )
 
 func UpCMD() *cobra.Command {
-	namespace := "default"
+	cwd, _ := os.Getwd()
+	cwd = filepath.Base(cwd)
+
+	namespace := cwd
+	if namespace == "." {
+		namespace = ""
+	}
+
 	env := map[string]string{}
 	envFile := ".env"
 	verbose := 0
@@ -20,6 +28,11 @@ func UpCMD() *cobra.Command {
 		Use:   "up [docker-compose file]",
 		Short: "run an application",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if namespace == "" {
+				fmt.Fprintf(cmd.ErrOrStderr(), "namespace is required\n")
+				return nil
+			}
+
 			file := dockerComposeFile()
 			if len(args) > 0 {
 				file = args[0]
@@ -71,8 +84,9 @@ func UpCMD() *cobra.Command {
 				for k, v := range neededVars {
 					fmt.Fprintf(cmd.ErrOrStderr(), "  %s", k)
 					if v.Default != "" {
-						fmt.Fprintf(cmd.ErrOrStderr(), "(default: %s)", v.Default)
+						fmt.Fprintf(cmd.ErrOrStderr(), "  (default: %s)", v.Default)
 					}
+					fmt.Fprintf(cmd.ErrOrStderr(), "\n")
 				}
 
 				fmt.Fprintf(cmd.ErrOrStderr(), "env vars:\n")
