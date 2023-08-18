@@ -14,6 +14,7 @@ import (
 func UpCMD() *cobra.Command {
 	cwd, _ := os.Getwd()
 	cwd = filepath.Base(cwd)
+	file := dockerComposeFile()
 
 	namespace := cwd
 	if namespace == "." {
@@ -25,17 +26,12 @@ func UpCMD() *cobra.Command {
 	verbose := 0
 
 	c := &cobra.Command{
-		Use:   "up [docker-compose file]",
+		Use:   "up",
 		Short: "run an application",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if namespace == "" {
 				fmt.Fprintf(cmd.ErrOrStderr(), "namespace is required\n")
 				return nil
-			}
-
-			file := dockerComposeFile()
-			if len(args) > 0 {
-				file = args[0]
 			}
 
 			template, err := os.ReadFile(file)
@@ -112,6 +108,7 @@ func UpCMD() *cobra.Command {
 		},
 	}
 
+	c.Flags().StringVarP(&file, "file", "f", file, "docker-compose file to use")
 	c.Flags().StringVarP(&namespace, "namespace", "n", namespace, "namespace to use")
 	c.Flags().BoolP("detach", "d", false, "detach from the application")
 	c.Flags().StringToStringVarP(&env, "env", "e", env, "set environment variables")
