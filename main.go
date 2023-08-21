@@ -42,6 +42,8 @@ func main() {
 	root.AddCommand(podLogs())
 	root.AddCommand(UpCMD())
 	root.AddCommand(namespacesCMD())
+	root.AddCommand(vpcsCMD())
+	root.AddCommand(inflowsCMD())
 
 	root.PersistentFlags().StringVarP(&USER_CONTEXT, "context", "c", "default", "user context")
 	root.PersistentFlags().StringVarP(&OUTPUT_FORMAT, "output", "o", "table", "output format (table, json)")

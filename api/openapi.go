@@ -1585,6 +1585,21 @@ type KraudImageNameList struct {
 	Items []KraudImageName `json:"items"`
 }
 
+// KraudInflow defines model for Kraud.Inflow.
+type KraudInflow struct {
+	DisplayPublic string `json:"DisplayPublic"`
+	DisplayTarget string `json:"DisplayTarget"`
+	ID            string `json:"ID"`
+	Kind          string `json:"Kind"`
+	VpcID         string `json:"VpcID"`
+	VpcName       string `json:"VpcName"`
+}
+
+// KraudInflowList defines model for Kraud.InflowList.
+type KraudInflowList struct {
+	Items []KraudInflow `json:"items"`
+}
+
 // Layer is a docker image layer
 type KraudLayer struct {
 	ID       string `json:"ID"`
@@ -1684,6 +1699,44 @@ type KraudVolumeMount struct {
 	MountPath string  `json:"MountPath"`
 	ReadOnly  *bool   `json:"ReadOnly,omitempty"`
 	SubPath   *string `json:"SubPath,omitempty"`
+}
+
+// KraudVpc defines model for Kraud.Vpc.
+type KraudVpc struct {
+	AID            string                  `json:"AID"`
+	ID             *string                 `json:"ID,omitempty"`
+	Name           string                  `json:"Name"`
+	PublicNetworks []KraudVpcPublicNetwork `json:"PublicNetworks"`
+	Services       []KraudVpcService       `json:"Services"`
+}
+
+// KraudVpcList defines model for Kraud.VpcList.
+type KraudVpcList struct {
+	Items []KraudVpc `json:"items"`
+}
+
+// KraudVpcPublicNetwork defines model for Kraud.VpcPublicNetwork.
+type KraudVpcPublicNetwork struct {
+	ID      string `json:"ID"`
+	Net     string `json:"Net"`
+	Segment string `json:"Segment"`
+}
+
+// KraudVpcService defines model for Kraud.VpcService.
+type KraudVpcService struct {
+	ID        string                `json:"ID"`
+	Ip4       string                `json:"IP4"`
+	Ip6       string                `json:"IP6"`
+	Name      string                `json:"Name"`
+	Namespace string                `json:"Namespace"`
+	Ports     []KraudVpcServicePort `json:"Ports"`
+}
+
+// KraudVpcServicePort defines model for Kraud.VpcServicePort.
+type KraudVpcServicePort struct {
+	ListenPort int    `json:"ListenPort"`
+	Protocol   string `json:"Protocol"`
+	TargetPort int    `json:"TargetPort"`
 }
 
 // An object describing a limit on resources which can be requested by a task.
@@ -5412,15 +5465,6 @@ type KraudLaunchSettings_Config struct {
 	AdditionalProperties map[string]string `json:"-"`
 }
 
-// KraudLaunchTemplateRequest defines model for kraud.LaunchTemplateRequest.
-type KraudLaunchTemplateRequest struct {
-	// LaunchSettings is the settings for launching an app.
-	Config KraudLaunchSettings `json:"config"`
-
-	// template to launch, akin to a docker-compose file
-	Template string `json:"template"`
-}
-
 // KraudSessionInfo defines model for kraud.SessionInfo.
 type KraudSessionInfo struct {
 	Tenants []KraudSessionTenantInfo `json:"tenants"`
@@ -6813,6 +6857,12 @@ type CreateImageJSONBody struct {
 	Layers       []KraudLayerReference `json:"Layers"`
 	OciID        string                `json:"OciID"`
 	Ref          string                `json:"Ref"`
+}
+
+// LaunchTemplateParams defines parameters for LaunchTemplate.
+type LaunchTemplateParams struct {
+	// namespace name
+	Namespace *string `json:"namespace,omitempty"`
 }
 
 // CreateLayerParams defines parameters for CreateLayer.
@@ -8700,6 +8750,16 @@ func InspectImageJSON200Response(body KraudImageName) *Response {
 	}
 }
 
+// ListKraudInflowsJSON200Response is a constructor method for a ListKraudInflows response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListKraudInflowsJSON200Response(body KraudInflowList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
 // LaunchTemplateJSON200Response is a constructor method for a LaunchTemplate response.
 // A *Response is returned with the configured status code and content type from the spec.
 func LaunchTemplateJSON200Response(body KraudLaunchAppResponse) *Response {
@@ -8853,6 +8913,26 @@ func InspectKraudVolumeJSON200Response(body KraudVolume) *Response {
 // EditKraudVolumeJSON200Response is a constructor method for a EditKraudVolume response.
 // A *Response is returned with the configured status code and content type from the spec.
 func EditKraudVolumeJSON200Response(body KraudVolume) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// ListKraudVpcsJSON200Response is a constructor method for a ListKraudVpcs response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListKraudVpcsJSON200Response(body KraudVpcList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// InspectKraudVpcJSON200Response is a constructor method for a InspectKraudVpc response.
+// A *Response is returned with the configured status code and content type from the spec.
+func InspectKraudVpcJSON200Response(body KraudVpc) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,

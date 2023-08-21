@@ -2088,6 +2088,37 @@ components:
             required:
                 - items
             type: object
+        Kraud.Inflow:
+            properties:
+                DisplayPublic:
+                    type: string
+                DisplayTarget:
+                    type: string
+                ID:
+                    type: string
+                Kind:
+                    type: string
+                VpcID:
+                    type: string
+                VpcName:
+                    type: string
+            required:
+                - ID
+                - Kind
+                - VpcID
+                - VpcName
+                - DisplayPublic
+                - DisplayTarget
+            type: object
+        Kraud.InflowList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/Kraud.Inflow'
+                    type: array
+            required:
+                - items
+            type: object
         Kraud.Layer:
             description: Layer is a docker image layer
             properties:
@@ -2283,6 +2314,87 @@ components:
             required:
                 - AID
                 - MountPath
+            type: object
+        Kraud.Vpc:
+            properties:
+                AID:
+                    type: string
+                ID:
+                    type: string
+                Name:
+                    type: string
+                PublicNetworks:
+                    items:
+                        $ref: '#/components/schemas/Kraud.VpcPublicNetwork'
+                    type: array
+                Services:
+                    items:
+                        $ref: '#/components/schemas/Kraud.VpcService'
+                    type: array
+            required:
+                - AID
+                - Name
+                - PublicNetworks
+                - Services
+            type: object
+        Kraud.VpcList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/Kraud.Vpc'
+                    type: array
+            required:
+                - items
+            type: object
+        Kraud.VpcPublicNetwork:
+            properties:
+                ID:
+                    type: string
+                Net:
+                    type: string
+                Segment:
+                    type: string
+            required:
+                - ID
+                - Segment
+                - Net
+            type: object
+        Kraud.VpcService:
+            properties:
+                ID:
+                    type: string
+                IP4:
+                    type: string
+                IP6:
+                    type: string
+                Name:
+                    type: string
+                Namespace:
+                    type: string
+                Ports:
+                    items:
+                        $ref: '#/components/schemas/Kraud.VpcServicePort'
+                    type: array
+            required:
+                - ID
+                - Name
+                - Namespace
+                - IP4
+                - IP6
+                - Ports
+            type: object
+        Kraud.VpcServicePort:
+            properties:
+                ListenPort:
+                    type: integer
+                Protocol:
+                    type: string
+                TargetPort:
+                    type: integer
+            required:
+                - Protocol
+                - ListenPort
+                - TargetPort
             type: object
         Limit:
             description: |
@@ -9046,19 +9158,6 @@ components:
                 - roles
                 - config
             type: object
-        kraud.LaunchTemplateRequest:
-            properties:
-                config:
-                    $ref: '#/components/schemas/kraud.LaunchSettings'
-                    content-type: application/json
-                    description: launch settings for the template
-                template:
-                    description: template to launch, akin to a docker-compose file
-                    format: binary
-                    type: string
-            required:
-                - template
-                - config
         kraud.SessionInfo:
             properties:
                 tenants:
@@ -10956,20 +11055,67 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/Kraud.ImageName'
                     description: OK
+    /apis/kraudcloud.com/v1/inflows:
+        get:
+            operationId: listKraudInflows
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.InflowList'
+                    description: OK
     /apis/kraudcloud.com/v1/launch:
         post:
+            description: Launch a docker-compose template
             operationId: launchTemplate
+            parameters:
+                - description: namespace name
+                  in: query
+                  name: namespace
+                  schema:
+                    type: string
             requestBody:
                 content:
                     multipart/form-data:
                         schema:
-                            $ref: '#/components/schemas/kraud.LaunchTemplateRequest'
+                            properties:
+                                .env:
+                                    content:
+                                        text/plain:
+                                            schema:
+                                                format: binary
+                                                type: string
+                                docker-compose:
+                                    oneOf:
+                                        - content:
+                                            application/x-yaml:
+                                                schema:
+                                                    format: binary
+                                                    type: string
+                                          name: docker-compose.yml
+                                        - content:
+                                            application/x-yaml:
+                                                schema:
+                                                    format: binary
+                                                    type: string
+                                          name: docker-compose.yaml
+                                namespace:
+                                    format: binary
+                                    type: string
+                            required:
+                                - docker-compose
+                            type: object
             responses:
                 200:
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/kraud.LaunchAppResponse'
+                        text/plain:
+                            schema:
+                                example: OK. Launch in progress
+                                type: string
                     description: OK. Launch in progress
     /apis/kraudcloud.com/v1/launch/{launch_id}/attach:
         get:
@@ -11436,6 +11582,33 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Kraud.Volume'
+                    description: OK
+    /apis/kraudcloud.com/v1/vpcs:
+        get:
+            operationId: listKraudVpcs
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.VpcList'
+                    description: OK
+    /apis/kraudcloud.com/v1/vpcs/{q}:
+        get:
+            operationId: inspectKraudVpc
+            parameters:
+                - description: aid or uuid
+                  in: path
+                  name: q
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.Vpc'
                     description: OK
     /apis/networking.k8s.io:
         get:
