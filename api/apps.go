@@ -243,8 +243,8 @@ func (c *Client) LaunchApp(ctx context.Context, feedID string, appID string, par
 
 func (c *Client) LaunchAttach(ctx context.Context, w io.Writer, launchID string) error {
 	u := &url.URL{
-		Scheme: c.BaseURL.Scheme,
-		Host:   c.BaseURL.Host,
+		Scheme: c.baseURL.Scheme,
+		Host:   c.baseURL.Host,
 		Path:   path.Join("/apis/kraudcloud.com/v1/launch", launchID, "attach"),
 	}
 

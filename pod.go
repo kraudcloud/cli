@@ -14,7 +14,10 @@ import (
 	"github.com/fatih/color"
 	"github.com/kraudcloud/cli/api"
 	"github.com/kraudcloud/cli/completions"
+	"github.com/kraudcloud/cli/compose/envparser"
+	"github.com/mattn/go-tty"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 func psCMD() *cobra.Command {
@@ -40,6 +43,7 @@ func podsCMD() *cobra.Command {
 	c.AddCommand(podsInspect())
 	c.AddCommand(podsEdit())
 	c.AddCommand(podLogs())
+	c.AddCommand(podSSH())
 
 	return c
 }
@@ -296,4 +300,70 @@ func podLogs() *cobra.Command {
 	c.Flags().BoolVarP(&follow, "follow", "f", false, "Keep tailing logs.")
 	return c
 
+}
+
+func podSSH() *cobra.Command {
+	env := map[string]string{}
+	envFile := ""
+	user := ""
+	workdir := ""
+	envF := []string{}
+
+	c := &cobra.Command{
+		Use:   "ssh [CONTAINER]",
+		Short: "ssh into a container",
+		Args:  cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completions.PodOptions(API(), cmd, args, toComplete)
+		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			out := map[string]string{}
+			if envFile != "" {
+				f, err := os.Open(envFile)
+				if err != nil {
+					fmt.Fprintf(cmd.ErrOrStderr(), "error opening env file: %v\n", err)
+					return
+				}
+				defer f.Close()
+
+				maps.Copy(out, envparser.EnvMapFromReader(f))
+			}
+
+			maps.Copy(out, env)
+
+			for k, v := range out {
+				envF = append(envF, fmt.Sprintf("%s=%s", k, v))
+			}
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			tty, err := tty.Open()
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "stdin is not a terminal (%v)\n", err)
+				return nil
+			}
+
+			err = API().SSH(ctx, tty, api.SSHParams{
+				PodID:   completions.PodFromArg(ctx, API(), args[0]),
+				User:    user,
+				WorkDir: workdir,
+				Env:     envF,
+			})
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error getting container: %v\n", err)
+				return nil
+			}
+
+			return nil
+		},
+	}
+
+	c.Flags().StringToStringVarP(&env, "env", "e", env, "Set environment variables")
+	c.Flags().StringVar(&envFile, "env-file", envFile, "Read in a file of environment variables")
+	c.Flags().StringVarP(&workdir, "workdir", "w", workdir, "Working directory for the container")
+
+	// unimplemented
+	// c.Flags().StringVarP(&user, "user", "u", user, "Username to use when connecting to the container")
+	return c
 }

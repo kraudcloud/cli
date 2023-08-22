@@ -1,6 +1,6 @@
 module github.com/kraudcloud/cli
 
-go 1.19
+go 1.20
 
 require (
 	github.com/davecgh/go-spew v1.1.1
@@ -10,6 +10,7 @@ require (
 	github.com/go-chi/render v1.0.3
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/mattn/go-isatty v0.0.19
+	github.com/mattn/go-tty v0.0.5
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db
 	github.com/rodaine/table v1.1.0
 	github.com/schollz/progressbar/v3 v3.13.1
