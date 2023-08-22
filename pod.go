@@ -361,8 +361,9 @@ func podSSH() *cobra.Command {
 
 	c.Flags().StringToStringVarP(&env, "env", "e", env, "Set environment variables")
 	c.Flags().StringVar(&envFile, "env-file", envFile, "Read in a file of environment variables")
-	c.Flags().StringVarP(&user, "user", "u", user, "Username to use when connecting to the container")
 	c.Flags().StringVarP(&workdir, "workdir", "w", workdir, "Working directory for the container")
 
+	// unimplemented
+	// c.Flags().StringVarP(&user, "user", "u", user, "Username to use when connecting to the container")
 	return c
 }
