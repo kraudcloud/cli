@@ -101,6 +101,11 @@ func ParseKV(kv string) (string, string, error) {
 
 // LoadEnvReader reads a .env formatted file from the given path, and returns a loader function
 func LoadEnvReader(r io.Reader) EnvLoader {
+	return LoadKV(EnvMapFromReader(r))
+}
+
+// EnvMapFromReader reads a .env formatted file from the given path, and returns a map of key/value pairs
+func EnvMapFromReader(r io.Reader) map[string]string {
 	sr := bufio.NewScanner(r)
 	sr.Split(bufio.ScanLines)
 
@@ -120,7 +125,7 @@ func LoadEnvReader(r io.Reader) EnvLoader {
 		vars[k] = v
 	}
 
-	return LoadKV(vars)
+	return vars
 }
 
 func unescapeStringVar(s string) string {

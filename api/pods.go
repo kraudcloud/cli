@@ -8,8 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"path"
+	"strconv"
 
 	"github.com/docker/docker/api/types"
 	"github.com/mattn/go-tty"
@@ -86,61 +89,25 @@ func (c *Client) EditPod(ctx context.Context, search string, pod *KraudPod) erro
 	return nil
 }
 
-func (c *Client) SSH(ctx context.Context, podID string, tty *tty.TTY) error {
+type SSHParams struct {
+	PodID   string
+	Env     []string
+	User    string
+	WorkDir string
+}
+
+func (c *Client) SSH(ctx context.Context, tty *tty.TTY, params SSHParams) error {
 	buf := &bytes.Buffer{}
-	err := json.NewEncoder(buf).Encode(types.ExecConfig{
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          true,
-		Cmd:          []string{"/bin/sh", "-c", "bash || sh"},
-	})
+	execID, err := c.initSSH(ctx, params, buf)
 	if err != nil {
 		return err
 	}
-
-	req, err := http.NewRequestWithContext(
-		ctx,
-		"POST",
-		path.Join("/v1.41/containers", podID, "exec"),
-		buf,
-	)
-	if err != nil {
-		return err
-	}
-
-	response := types.IDResponse{}
-	err = c.Do(req, &response)
-	if err != nil {
-		return err
-	}
-
 	buf.Reset()
-	err = json.NewEncoder(buf).Encode(types.ExecStartCheck{
-		Detach: false,
-		Tty:    true,
-	})
+
+	req, err := c.newSSHRequest(ctx, execID, buf)
 	if err != nil {
 		return err
 	}
-
-	req, err = http.NewRequestWithContext(
-		ctx,
-		"POST",
-		path.Join("/v1.41/exec", response.ID, "start"),
-		buf,
-	)
-	if err != nil {
-		return err
-	}
-
-	// long lived request, directly use a tls dialer and write req
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Upgrade", "tcp")
-	req.Header.Set("Connection", "Upgrade")
-	req.Header.Set("User-Agent", c.userAgent)
-	req.Header.Set("Authorization", "Bearer "+c.authToken)
-	req.Host = c.baseURL.Host
 
 	host := c.baseURL.Host
 	if c.baseURL.Port() == "" {
@@ -152,6 +119,7 @@ func (c *Client) SSH(ctx context.Context, podID string, tty *tty.TTY) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	err = req.Write(conn)
 	if err != nil {
@@ -167,15 +135,108 @@ func (c *Client) SSH(ctx context.Context, podID string, tty *tty.TTY) error {
 		return fmt.Errorf("unexpected status code %d", r.StatusCode)
 	}
 
-	go func() {
-		io.Copy(conn, tty.Input())
-		conn.Close()
-	}()
+	// once we have the tty over net conn, resize it
+	err = c.resizeSSH(ctx, tty, execID)
+	if err != nil {
+		log.Println("error resizing tty", err)
+	}
 
+	go io.Copy(conn, tty.Input())
 	_, err = io.Copy(tty.Output(), conn)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (c *Client) resizeSSH(ctx context.Context, tty *tty.TTY, execID string) error {
+	x, y, err := tty.Size()
+	if err != nil {
+		return err
+	}
+
+	resizeReq, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		path.Join("/v1.41/exec", execID, "resize?"+url.Values{
+			"h": []string{strconv.Itoa(y)},
+			"w": []string{strconv.Itoa(x)},
+		}.Encode(),
+		),
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+	err = c.Do(resizeReq, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) initSSH(ctx context.Context, params SSHParams, buf *bytes.Buffer) (string, error) {
+	err := json.NewEncoder(buf).Encode(types.ExecConfig{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+		User:         params.User,
+		Env:          params.Env,
+		WorkingDir:   params.WorkDir,
+		Cmd:          []string{"/bin/sh", "-c", "bash || sh"},
+	})
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		path.Join("/v1.41/containers", params.PodID, "exec"),
+		buf,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	response := types.IDResponse{}
+	err = c.Do(req, &response)
+	if err != nil {
+		return "", err
+	}
+
+	return response.ID, nil
+}
+
+func (c *Client) newSSHRequest(ctx context.Context, execID string, buf *bytes.Buffer) (*http.Request, error) {
+	err := json.NewEncoder(buf).Encode(types.ExecStartCheck{
+		Detach: false,
+		Tty:    true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		path.Join("/v1.41/exec", execID, "start"),
+		buf,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// long lived request, directly use a tls dialer and write req
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Upgrade", "tcp")
+	req.Header.Set("Connection", "Upgrade")
+	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("Authorization", "Bearer "+c.authToken)
+	req.Host = c.baseURL.Host
+
+	return req, nil
 }
