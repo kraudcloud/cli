@@ -1,11 +1,18 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"path"
+
+	"github.com/docker/docker/api/types"
+	"github.com/mattn/go-tty"
 )
 
 func (c *Client) ListPods(ctx context.Context, withStatus bool) (*KraudPodList, error) {
@@ -72,6 +79,100 @@ func (c *Client) EditPod(ctx context.Context, search string, pod *KraudPod) erro
 
 	var response interface{}
 	err = c.Do(req, response)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) SSH(ctx context.Context, podID string, tty *tty.TTY) error {
+	buf := &bytes.Buffer{}
+	err := json.NewEncoder(buf).Encode(types.ExecConfig{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+		Cmd:          []string{"/bin/sh", "-c", "bash || sh"},
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		path.Join("/v1.41/containers", podID, "exec"),
+		buf,
+	)
+	if err != nil {
+		return err
+	}
+
+	response := types.IDResponse{}
+	err = c.Do(req, &response)
+	if err != nil {
+		return err
+	}
+
+	buf.Reset()
+	err = json.NewEncoder(buf).Encode(types.ExecStartCheck{
+		Detach: false,
+		Tty:    true,
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err = http.NewRequestWithContext(
+		ctx,
+		"POST",
+		path.Join("/v1.41/exec", response.ID, "start"),
+		buf,
+	)
+	if err != nil {
+		return err
+	}
+
+	// long lived request, directly use a tls dialer and write req
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Upgrade", "tcp")
+	req.Header.Set("Connection", "Upgrade")
+	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("Authorization", "Bearer "+c.authToken)
+	req.Host = c.baseURL.Host
+
+	host := c.baseURL.Host
+	if c.baseURL.Port() == "" {
+		host = host + ":443"
+	}
+
+	d := tls.Dialer{}
+	conn, err := d.DialContext(ctx, "tcp", host)
+	if err != nil {
+		return err
+	}
+
+	err = req.Write(conn)
+	if err != nil {
+		return err
+	}
+
+	r, err := http.ReadResponse(bufio.NewReader(conn), req)
+	if err != nil {
+		return err
+	}
+
+	if r.StatusCode != 101 {
+		return fmt.Errorf("unexpected status code %d", r.StatusCode)
+	}
+
+	go func() {
+		io.Copy(conn, tty.Input())
+		conn.Close()
+	}()
+
+	_, err = io.Copy(tty.Output(), conn)
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/kraudcloud/cli/api"
 	"github.com/kraudcloud/cli/completions"
+	"github.com/mattn/go-tty"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +41,7 @@ func podsCMD() *cobra.Command {
 	c.AddCommand(podsInspect())
 	c.AddCommand(podsEdit())
 	c.AddCommand(podLogs())
+	c.AddCommand(podSSH())
 
 	return c
 }
@@ -296,4 +298,36 @@ func podLogs() *cobra.Command {
 	c.Flags().BoolVarP(&follow, "follow", "f", false, "Keep tailing logs.")
 	return c
 
+}
+
+func podSSH() *cobra.Command {
+	c := &cobra.Command{
+		Use:   "ssh [CONTAINER]",
+		Short: "ssh into a container",
+		Args:  cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completions.PodOptions(API(), cmd, args, toComplete)
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			aid := completions.PodFromArg(ctx, API(), args[0])
+
+			tty, err := tty.Open()
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "stdin is not a terminal (%v)\n", err)
+				return nil
+			}
+
+			err = API().SSH(ctx, aid, tty)
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error getting container: %v\n", err)
+				return nil
+			}
+
+			return nil
+		},
+	}
+
+	return c
 }

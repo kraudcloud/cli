@@ -15,39 +15,35 @@ type Client struct {
 	// HTTP client used to communicate with the API.
 	HTTPClient *http.Client
 
-	// AuthToken is the token used to authenticate with the API.
-	AuthToken string
-
-	BaseURL *url.URL
+	// roundtrip options
+	baseURL   *url.URL
+	authToken string
+	userAgent string
+	base      http.RoundTripper
 }
 
 func NewClient(authToken string, baseURL *url.URL) *Client {
 	userAgent := fmt.Sprintf("kra %s", Version)
 
+	c := &Client{
+		base:      http.DefaultTransport,
+		baseURL:   baseURL,
+		authToken: authToken,
+		userAgent: userAgent,
+	}
+
 	client := &http.Client{
-		Transport: &kraTransport{
-			Base:      http.DefaultTransport,
-			BaseURL:   baseURL,
-			UserAgent: userAgent,
-			AuthToken: authToken,
-		},
+		Transport: c,
 	}
 
-	return &Client{
-		HTTPClient: client,
-		BaseURL:    baseURL,
-		AuthToken:  authToken,
-	}
-}
-
-func (c *Client) Close() {
-	c.HTTPClient.CloseIdleConnections()
+	c.HTTPClient = client
+	return c
 }
 
 func (c *Client) DockerClient() *dockerclient.Client {
 	dc, err := dockerclient.NewClientWithOpts(
 		dockerclient.WithAPIVersionNegotiation(),
-		dockerclient.WithHost("tcp://"+c.BaseURL.Host),
+		dockerclient.WithHost("tcp://"+c.baseURL.Host),
 		dockerclient.WithHTTPClient(c.HTTPClient),
 	)
 	if err != nil {
@@ -97,26 +93,16 @@ func (c *Client) DoRaw(req *http.Request) (*http.Response, error) {
 	return c.HTTPClient.Do(req)
 }
 
-type kraTransport struct {
-	Base http.RoundTripper
-
-	BaseURL *url.URL
-
-	UserAgent string
-
-	AuthToken string
-}
-
-func (t *kraTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.URL.Scheme = t.BaseURL.Scheme
-	req.URL.Host = t.BaseURL.Host
-	if req.Header.Get("User-Agent") == "" && t.UserAgent != "" {
-		req.Header.Set("User-Agent", t.UserAgent)
+func (c *Client) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.URL.Scheme = c.baseURL.Scheme
+	req.URL.Host = c.baseURL.Host
+	if req.Header.Get("User-Agent") == "" && c.userAgent != "" {
+		req.Header.Set("User-Agent", c.userAgent)
 	}
 
-	if req.Header.Get("Authorization") == "" && t.AuthToken != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", t.AuthToken))
+	if req.Header.Get("Authorization") == "" && c.authToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.authToken))
 	}
 
-	return t.Base.RoundTrip(req)
+	return c.base.RoundTrip(req)
 }
