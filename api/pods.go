@@ -135,7 +135,7 @@ func (c *Client) SSH(ctx context.Context, tty *tty.TTY, params SSHParams) error 
 		return fmt.Errorf("unexpected status code %d", r.StatusCode)
 	}
 
-	// once we have the tty over net conn, resize it
+	// we must resize after acquiring the exec stream
 	err = c.resizeSSH(ctx, tty, execID)
 	if err != nil {
 		log.Println("error resizing tty", err)
@@ -230,7 +230,6 @@ func (c *Client) newSSHRequest(ctx context.Context, execID string, buf *bytes.Bu
 		return nil, err
 	}
 
-	// long lived request, directly use a tls dialer and write req
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Upgrade", "tcp")
 	req.Header.Set("Connection", "Upgrade")
