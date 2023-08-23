@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -156,7 +157,7 @@ type LaunchParams struct {
 	Detach    bool
 }
 
-func (c *Client) Launch(ctx context.Context, lp LaunchParams, response io.Writer) error {
+func (c *Client) Launch(ctx context.Context, lp LaunchParams, out io.Writer) error {
 	u := &url.URL{
 		Path: "/apis/kraudcloud.com/v1/launch",
 		RawQuery: url.Values{
@@ -207,12 +208,39 @@ func (c *Client) Launch(ctx context.Context, lp LaunchParams, response io.Writer
 		return err
 	}
 
-	_, err = io.Copy(response, resp.Body)
+	_, err = io.Copy(errorWriterWrapper{w: out}, resp.Body)
 	if errors.Is(err, io.EOF) {
 		return nil
 	}
 
 	return err
+}
+
+// errorWriterWrapper is a wrapper around a writer that checks for the string `Error:`
+// and returns an error with the line's content if found
+type errorWriterWrapper struct {
+	w io.Writer
+}
+
+func (e errorWriterWrapper) Write(p []byte) (int, error) {
+	// split on newlines
+	scanner := bufio.NewScanner(bytes.NewReader(p))
+	n := 0
+	for scanner.Scan() {
+		line := scanner.Bytes()
+
+		if bytes.Contains(line, []byte("Error: ")) {
+			return 0, errors.New(string(line))
+		}
+
+		n2, err := fmt.Fprintln(e.w, string(line))
+		n += n2
+		if err != nil {
+			return n, err
+		}
+	}
+
+	return len(p), nil
 }
 
 func (c *Client) LaunchApp(ctx context.Context, feedID string, appID string, params KraudLaunchSettings) (*KraudLaunchAppResponse, error) {
@@ -313,6 +341,13 @@ func CopyWS(w io.Writer, r io.Reader) error {
 		err = json.Unmarshal(msg, &meta)
 		if err != nil {
 			return err
+		}
+
+		if meta.Error != nil {
+			// we don't actually want to return the error that was sent back,
+			// because it was already printed
+			// we just return a generic error
+			return errors.New("launch task failed. see logs for more details")
 		}
 	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/kraudcloud/cli/api"
 	"github.com/kraudcloud/cli/compose/envparser"
+	"github.com/mitchellh/colorstring"
 	"github.com/spf13/cobra"
 )
 
@@ -98,9 +99,10 @@ func UpCMD() *cobra.Command {
 				Env:       env,
 				Namespace: namespace,
 				Detach:    detach,
-			}, os.Stdout)
+			}, cmd.OutOrStdout())
 			if err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "error launching app: %v\n", err)
+				colorstring.Fprintf(cmd.ErrOrStderr(), "[red]%v\n", err)
+				os.Exit(1)
 				return nil
 			}
 
