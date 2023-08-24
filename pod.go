@@ -344,6 +344,12 @@ func podSSH() *cobra.Command {
 				return nil
 			}
 
+			// set raw mode to forward signals
+			restore, err := tty.Raw()
+			if err == nil {
+				defer restore()
+			}
+
 			err = API().SSH(ctx, tty, api.SSHParams{
 				PodID:   completions.PodFromArg(ctx, API(), args[0]),
 				User:    user,
