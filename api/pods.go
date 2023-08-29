@@ -141,6 +141,12 @@ func (c *Client) SSH(ctx context.Context, tty *tty.TTY, params SSHParams) error 
 		log.Println("error resizing tty", err)
 	}
 
+	// set calling terminal raw mode
+	restore, err := tty.Raw()
+	if err == nil {
+		defer restore()
+	}
+
 	go io.Copy(conn, tty.Input())
 	_, err = io.Copy(tty.Output(), conn)
 	if err != nil {
