@@ -86,22 +86,53 @@ func volumeRm() *cobra.Command {
 }
 
 func volumeCreate() *cobra.Command {
+	driver := ""
+	size := ""
+	additionalLabels := map[string]string{}
+	volOpts := map[string]string{}
+
 	c := &cobra.Command{
-		Use:     "create",
-		Short:   "Create a volume with the specified name",
-		Aliases: []string{"new"},
-		Args:    cobra.ExactArgs(1),
+		Use:   "create",
+		Short: "Create a volume with the specified name",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			name := args[0]
 
-			_, err := API().CreateVolume(cmd.Context(), api.DockerVolumeCreateJSONRequestBody{
+			r := api.DockerVolumeCreateJSONRequestBody{
 				Name: &name,
-			})
+			}
+
+			if driver != "" {
+				r.Driver = &driver
+			}
+
+			if size != "" {
+				volOpts["size"] = size
+			}
+
+			if len(volOpts) > 0 {
+				r.DriverOpts = &api.VolumeCreateOptions_DriverOpts{
+					AdditionalProperties: volOpts,
+				}
+			}
+
+			if len(additionalLabels) > 0 {
+				r.Labels = &api.VolumeCreateOptions_Labels{
+					AdditionalProperties: additionalLabels,
+				}
+			}
+
+			_, err := API().CreateVolume(cmd.Context(), r)
 			if err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "error creating volume: %v\n", err)
 			}
 		},
 	}
+
+	c.Flags().StringVarP(&driver, "driver", "d", driver, "volume driver")
+	c.Flags().StringVarP(&size, "size", "s", size, "volume size")
+	c.Flags().StringToStringVarP(&additionalLabels, "label", "l", additionalLabels, "volume labels")
+	c.Flags().StringToStringVar(&volOpts, "opt", volOpts, "volume options")
 
 	return c
 }
@@ -111,7 +142,14 @@ func volumeCopy() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "copy src:dst",
 		Short: "copy local dir/file to remote volume",
-		Args:  cobra.ExactArgs(1),
+		Long: `copy local dir/file to remote volume,
+src and dst are in format: local_path:volume_path.
+
+Prefer using docker cp instead of this command, for both performance and reliability reasons.
+
+This is here only to help with debugging "kra up".`,
+		Args:   cobra.ExactArgs(1),
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			local, volume, ok := strings.Cut(args[0], ":")
 			if !ok {
