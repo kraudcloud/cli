@@ -1,7 +1,9 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 )
 
@@ -41,4 +43,25 @@ func (c *Client) DeleteVolume(ctx context.Context, aid string) error {
 	}
 
 	return c.Do(req, nil)
+}
+
+func (c *Client) CreateVolume(ctx context.Context, config DockerVolumeCreateJSONRequestBody) (Volume, error) {
+	body := &bytes.Buffer{}
+	err := json.NewEncoder(body).Encode(config)
+	if err != nil {
+		return Volume{}, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "/v1.41/volumes/create", body)
+	if err != nil {
+		return Volume{}, err
+	}
+
+	out := Volume{}
+	err = c.Do(req, &out)
+	if err != nil {
+		return Volume{}, err
+	}
+
+	return out, nil
 }

@@ -1,9 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/kraudcloud/cli/api"
 	"github.com/kraudcloud/cli/completions"
 	"github.com/spf13/cobra"
 )
@@ -17,6 +22,8 @@ func volumesCMD() *cobra.Command {
 
 	c.AddCommand(volumeLs())
 	c.AddCommand(volumeRm())
+	c.AddCommand(volumeCreate())
+	c.AddCommand(volumeCopy())
 
 	return c
 }
@@ -75,5 +82,61 @@ func volumeRm() *cobra.Command {
 		},
 	}
 
+	return c
+}
+
+func volumeCreate() *cobra.Command {
+	c := &cobra.Command{
+		Use:     "create",
+		Short:   "Create a volume with the specified name",
+		Aliases: []string{"new"},
+		Args:    cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			name := args[0]
+
+			_, err := API().CreateVolume(cmd.Context(), api.DockerVolumeCreateJSONRequestBody{
+				Name: &name,
+			})
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error creating volume: %v\n", err)
+			}
+		},
+	}
+
+	return c
+}
+
+func volumeCopy() *cobra.Command {
+	namespace := "default"
+	c := &cobra.Command{
+		Use:   "copy src:dst",
+		Short: "copy local dir/file to remote volume",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			local, volume, ok := strings.Cut(args[0], ":")
+			if !ok {
+				return errors.New("invalid format")
+			}
+
+			volume = filepath.Clean(volume)
+			local = filepath.Clean(local)
+
+			err := API().UploadDir(cmd.Context(), namespace, local, volume)
+			if err != nil {
+				volName, rest, _ := strings.Cut(volume, string(os.PathSeparator))
+				if rest == "" {
+					rest = "/"
+				}
+
+				fmt.Fprintf(cmd.ErrOrStderr(), "error copying volume (namespace=%s volume=%s path=%s): %v\n", namespace, volName, rest, err)
+				return nil
+			}
+			fmt.Println("copied sucessfully")
+
+			return nil
+		},
+	}
+
+	c.Flags().StringVarP(&namespace, "namespace", "n", namespace, "namespace")
 	return c
 }
