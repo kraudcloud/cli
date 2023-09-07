@@ -151,7 +151,7 @@ func (c *Client) InspectApp(ctx context.Context, feedID string, appID string) (*
 }
 
 type LaunchParams struct {
-	Template  string
+	Template  io.Reader
 	Env       map[string]string
 	Namespace string
 	Detach    bool
@@ -168,10 +168,11 @@ func (c *Client) Launch(ctx context.Context, lp LaunchParams, out io.Writer) err
 	buf := bytes.Buffer{}
 
 	mw := multipart.NewWriter(&buf)
-	err := mw.WriteField("docker-compose.yml", lp.Template)
+	w, err := mw.CreateFormField("docker-compose.yml")
 	if err != nil {
 		return err
 	}
+	io.Copy(w, lp.Template)
 
 	ew, err := mw.CreateFormField(".env")
 	if err != nil {

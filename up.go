@@ -2,14 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/kraudcloud/cli/api"
+	"github.com/kraudcloud/cli/compose"
 	"github.com/kraudcloud/cli/compose/envparser"
 	"github.com/mitchellh/colorstring"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 func UpCMD() *cobra.Command {
@@ -35,18 +39,20 @@ func UpCMD() *cobra.Command {
 				return nil
 			}
 
-			template, err := os.ReadFile(file)
+			template, err := os.Open(file)
 			if err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "error reading docker-compose file: %v\n", err)
 				return err
 			}
+			defer template.Close()
 
 			// needed env neededVars
-			neededVars, err := envparser.ParseTemplateVars(bytes.NewReader(template))
+			neededVars, err := envparser.ParseTemplateVars(template)
 			if err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "error getting needed env vars: %v\n", err)
 				return err
 			}
+			template.Seek(0, 0)
 
 			loaders := []envparser.EnvLoader{
 				envparser.LoadKV(env),
@@ -94,8 +100,19 @@ func UpCMD() *cobra.Command {
 
 			detach, _ := cmd.Flags().GetBool("detach")
 
+			apply, newTemplate, err := rewriteComposeLocal(template, namespace)
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error rewriting local template: %s", err)
+				return nil
+			}
+
+			err = apply(cmd.Context())
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error creating volumes to inject local files into: %s", err)
+			}
+
 			err = API().Launch(cmd.Context(), api.LaunchParams{
-				Template:  string(template),
+				Template:  newTemplate,
 				Env:       env,
 				Namespace: namespace,
 				Detach:    detach,
@@ -129,4 +146,28 @@ func dockerComposeFile() string {
 	}
 
 	return ""
+}
+
+// rewriteComposeLocal takes in a compose file,
+// it parses the volumes section.
+// It generates an application function and a new spec
+// that must be handled *after* applying.
+func rewriteComposeLocal(r io.Reader, namespace string) (func(ctx context.Context) error, *bytes.Buffer, error) {
+	f, err := compose.Parse(r)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	apply, newF, err := f.Rewrite(namespace + "__local")
+	if err != nil {
+		return nil, nil, fmt.Errorf("error rewriting compose file from local paths: %w", err)
+	}
+
+	remarshalled := &bytes.Buffer{}
+	err = yaml.NewEncoder(remarshalled).Encode(newF)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reincoding the file: %w", err)
+	}
+
+	return apply, remarshalled, nil
 }
