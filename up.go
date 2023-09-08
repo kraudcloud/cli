@@ -98,19 +98,13 @@ func UpCMD() *cobra.Command {
 				}
 			}
 
-			detach, _ := cmd.Flags().GetBool("detach")
-
 			apply, newTemplate, err := rewriteComposeLocal(template, namespace)
 			if err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "error rewriting local template: %s", err)
 				return nil
 			}
 
-			err = apply(cmd.Context())
-			if err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "error creating volumes to inject local files into: %s", err)
-			}
-
+			detach, _ := cmd.Flags().GetBool("detach")
 			err = API().Launch(cmd.Context(), api.LaunchParams{
 				Template:  newTemplate,
 				Env:       env,
@@ -121,6 +115,11 @@ func UpCMD() *cobra.Command {
 				colorstring.Fprintf(cmd.ErrOrStderr(), "[red]%v\n", err)
 				os.Exit(1)
 				return nil
+			}
+
+			err = apply(cmd.Context())
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error creating volumes to inject local files into: %s", err)
 			}
 
 			return nil
@@ -151,23 +150,32 @@ func dockerComposeFile() string {
 // rewriteComposeLocal takes in a compose file,
 // it parses the volumes section.
 // It generates an application function and a new spec
-// that must be handled *after* applying.
+// that must be handled *before* applying
 func rewriteComposeLocal(r io.Reader, namespace string) (func(ctx context.Context) error, *bytes.Buffer, error) {
 	f, err := compose.Parse(r)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	apply, newF, err := f.Rewrite(namespace + "__local")
+	newF, paths, err := f.Rewrite("__local__")
 	if err != nil {
 		return nil, nil, fmt.Errorf("error rewriting compose file from local paths: %w", err)
 	}
 
-	remarshalled := &bytes.Buffer{}
-	err = yaml.NewEncoder(remarshalled).Encode(newF)
+	out := &bytes.Buffer{}
+	err = yaml.NewEncoder(out).Encode(newF)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error reincoding the file: %w", err)
 	}
 
-	return apply, remarshalled, nil
+	return func(ctx context.Context) error {
+		for _, p := range paths {
+			err := API().UploadDir(ctx, namespace, p.OriginalSource, p.Destination)
+			if err != nil {
+				return fmt.Errorf("failed to upload %q to %q: %w", p.OriginalSource, p.Destination, err)
+			}
+		}
+
+		return nil
+	}, out, nil
 }

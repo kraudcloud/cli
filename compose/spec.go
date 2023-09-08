@@ -1,9 +1,7 @@
 package compose
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"path"
 	"strings"
 )
@@ -23,15 +21,16 @@ type Service struct {
 
 // VolumeDirective
 type VolumeDirective struct {
-	Source, Destination, Options string
-	local                        bool
+	Source, Destination string
+	Options             string
+	OriginalSource      string
 }
 
 // IsLocal reports whether the path is a local path
 // the matching depends on . being the first character.
 // TODO: see how docker does it
 func (vd VolumeDirective) IsLocal() bool {
-	return strings.HasPrefix(vd.Source, ".") || vd.local
+	return strings.HasPrefix(vd.OriginalSource, ".")
 }
 
 func (vd VolumeDirective) String() string {
@@ -99,27 +98,24 @@ func parseVolume(s string) (VolumeDirective, error) {
 	}
 
 	v := VolumeDirective{
-		Source:      parts[0],
-		Destination: parts[1],
+		Source:         parts[0],
+		OriginalSource: parts[0],
+		Destination:    parts[1],
 	}
 
 	if len(parts) > 2 {
 		opt := strings.Join(parts[2:], ":")
 		v.Options = opt
 	}
-
-	v.local = v.IsLocal()
 	return v, nil
 }
 
 // rewriteComposeLocal takes in a compose file,
 // it parses the volumes section.
-// It generates an application function and a new spec
-// that must be handled *after* applying.
-func (f *File) Rewrite(magicVolume string) (func(ctx context.Context) error, *File, error) {
+func (f *File) Rewrite(volumeName string) (*File, []VolumeDirective, error) {
 	volumePaths := []VolumeDirective{}
 	for k := range f.Services {
-		s, p, err := f.Services[k].Rewrite(path.Join(magicVolume, k))
+		s, p, err := f.Services[k].Rewrite(path.Join(volumeName, k))
 		if err != nil {
 			return nil, nil, fmt.Errorf("error rewriting service %q: %w", k, err)
 		}
@@ -134,12 +130,8 @@ func (f *File) Rewrite(magicVolume string) (func(ctx context.Context) error, *Fi
 	}
 
 	if len(volumePaths) > 0 {
-		f.Volumes[magicVolume] = struct{}{}
+		f.Volumes[volumeName] = struct{}{}
 	}
 
-	return func(ctx context.Context) error {
-		log.Println("create volume, mount files here", volumePaths)
-
-		return nil
-	}, f, nil
+	return f, volumePaths, nil
 }
