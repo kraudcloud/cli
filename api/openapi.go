@@ -5297,6 +5297,17 @@ type KrNamespaceReference struct {
 	Name *string `json:"Name,omitempty"`
 }
 
+// KrTenant defines model for kr.Tenant.
+type KrTenant struct {
+	ID   *string `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
+}
+
+// KrTenantList defines model for kr.TenantList.
+type KrTenantList struct {
+	Items []KrTenant `json:"items"`
+}
+
 // KrVmmContainerReport defines model for kr.VmmContainerReport.
 type KrVmmContainerReport struct {
 	ExitCode *int    `json:"ExitCode,omitempty"`
@@ -6827,6 +6838,9 @@ type VmmReportContainerStateJSONBody KrVmmContainerReport
 // VmmReportPodStateJSONBody defines parameters for VmmReportPodState.
 type VmmReportPodStateJSONBody KrVmmPodReport
 
+// CreateTenantJSONBody defines parameters for CreateTenant.
+type CreateTenantJSONBody KrTenant
+
 // CreateDomainJSONBody defines parameters for CreateDomain.
 type CreateDomainJSONBody KraudDomainCreate
 
@@ -7928,6 +7942,14 @@ func (VmmReportPodStateJSONRequestBody) Bind(*http.Request) error {
 	return nil
 }
 
+// CreateTenantJSONRequestBody defines body for CreateTenant for application/json ContentType.
+type CreateTenantJSONRequestBody CreateTenantJSONBody
+
+// Bind implements render.Binder.
+func (CreateTenantJSONRequestBody) Bind(*http.Request) error {
+	return nil
+}
+
 // CreateDomainJSONRequestBody defines body for CreateDomain for application/json ContentType.
 type CreateDomainJSONRequestBody CreateDomainJSONBody
 
@@ -8596,6 +8618,26 @@ func GetNamespaceOverviewByNameJSON200Response(body KrNamespaceOverview) *Respon
 	return &Response{
 		body:        body,
 		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// ListTenantsJSON200Response is a constructor method for a ListTenants response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListTenantsJSON200Response(body KrTenantList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// CreateTenantJSON201Response is a constructor method for a CreateTenant response.
+// A *Response is returned with the configured status code and content type from the spec.
+func CreateTenantJSON201Response(body KrTenant) *Response {
+	return &Response{
+		body:        body,
+		Code:        201,
 		contentType: "application/json",
 	}
 }

@@ -8883,6 +8883,21 @@ components:
                 Name:
                     type: string
             type: object
+        kr.Tenant:
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+        kr.TenantList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/kr.Tenant'
+                    type: array
+            required:
+                - items
+            type: object
         kr.VmmContainerReport:
             properties:
                 ExitCode:
@@ -10758,6 +10773,32 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/kr.NamespaceOverview'
                     description: OK
+    /apis/kr/v1/tenants:
+        get:
+            operationId: listTenants
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kr.TenantList'
+                    description: OK
+        post:
+            operationId: createTenant
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/kr.Tenant'
+                description: Create sub tenant
+                required: true
+            responses:
+                201:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/kr.Tenant'
+                    description: Created
     /apis/kraudcloud.com/v1:
         get:
             operationId: getKraudcloudV1APIResources
