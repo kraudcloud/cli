@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"log"
 	"net/http"
 	"net/url"
@@ -114,12 +115,24 @@ func (c *Client) SSH(ctx context.Context, tty *tty.TTY, params SSHParams) error 
 		host = host + ":443"
 	}
 
-	d := tls.Dialer{}
-	conn, err := d.DialContext(ctx, "tcp", host)
-	if err != nil {
-		return err
+
+	var conn net.Conn
+
+	if c.baseURL.Scheme == "https" {
+		d := tls.Dialer{}
+		conn, err = d.DialContext(ctx, "tcp", host)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+	} else {
+		conn, err = net.Dial("tcp", host)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
 	}
-	defer conn.Close()
+
 
 	err = req.Write(conn)
 	if err != nil {
