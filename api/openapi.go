@@ -1623,20 +1623,21 @@ type KraudLayerReference struct {
 
 // KraudPod defines model for Kraud.Pod.
 type KraudPod struct {
-	AID                string           `json:"AID"`
-	Architecture       string           `json:"Architecture"`
-	Containers         []KraudContainer `json:"Containers"`
-	CPU                string           `json:"Cpu"`
-	DeleteOnDeschedule bool             `json:"DeleteOnDeschedule"`
-	ID                 *string          `json:"ID,omitempty"`
-	Mem                string           `json:"Mem"`
-	Name               string           `json:"Name"`
-	Namespace          string           `json:"Namespace"`
-	Replicas           int              `json:"Replicas"`
-	Res                *KraudPod_Res    `json:"Res,omitempty"`
-	RestartPolicy      string           `json:"RestartPolicy"`
-	Status             *KraudPodStatus  `json:"Status,omitempty"`
-	Zone               string           `json:"Zone"`
+	AID                string                `json:"AID"`
+	Architecture       string                `json:"Architecture"`
+	Containers         []KraudContainer      `json:"Containers"`
+	CPU                string                `json:"Cpu"`
+	DeleteOnDeschedule bool                  `json:"DeleteOnDeschedule"`
+	ID                 *string               `json:"ID,omitempty"`
+	Mem                string                `json:"Mem"`
+	Name               string                `json:"Name"`
+	Namespace          string                `json:"Namespace"`
+	Overlays           []KraudPodOverlaySpec `json:"Overlays"`
+	Replicas           int                   `json:"Replicas"`
+	Res                *KraudPod_Res         `json:"Res,omitempty"`
+	RestartPolicy      string                `json:"RestartPolicy"`
+	Status             *KraudPodStatus       `json:"Status,omitempty"`
+	Zone               string                `json:"Zone"`
 }
 
 // KraudPod_Res defines model for KraudPod.Res.
@@ -1647,6 +1648,13 @@ type KraudPod_Res struct {
 // KraudPodList defines model for Kraud.PodList.
 type KraudPodList struct {
 	Items []KraudPod `json:"items"`
+}
+
+// KraudPodOverlaySpec defines model for Kraud.PodOverlaySpec.
+type KraudPodOverlaySpec struct {
+	AID string `json:"AID"`
+	Ip4 string `json:"IP4"`
+	Ip6 string `json:"IP6"`
 }
 
 // KraudPodStatus defines model for Kraud.PodStatus.
@@ -1706,6 +1714,7 @@ type KraudVpc struct {
 	AID            string                  `json:"AID"`
 	ID             *string                 `json:"ID,omitempty"`
 	Name           string                  `json:"Name"`
+	Pods           []KraudVpcPod           `json:"Pods"`
 	PublicNetworks []KraudVpcPublicNetwork `json:"PublicNetworks"`
 	Services       []KraudVpcService       `json:"Services"`
 }
@@ -1713,6 +1722,36 @@ type KraudVpc struct {
 // KraudVpcList defines model for Kraud.VpcList.
 type KraudVpcList struct {
 	Items []KraudVpc `json:"items"`
+}
+
+// KraudVpcOverlay defines model for Kraud.VpcOverlay.
+type KraudVpcOverlay struct {
+	AID       string `json:"AID"`
+	Driver    string `json:"Driver"`
+	ID        string `json:"ID"`
+	Name      string `json:"Name"`
+	Namespace string `json:"Namespace"`
+	Net4      string `json:"Net4"`
+	Net6      string `json:"Net6"`
+}
+
+// KraudVpcOverlayList defines model for Kraud.VpcOverlayList.
+type KraudVpcOverlayList struct {
+	Items []KraudVpcOverlay `json:"items"`
+}
+
+// KraudVpcPod defines model for Kraud.VpcPod.
+type KraudVpcPod struct {
+	ID        string                     `json:"ID"`
+	Name      string                     `json:"Name"`
+	Namespace string                     `json:"Namespace"`
+	Overlays  []KraudVpcPodOverlayMember `json:"Overlays"`
+	VpcIP     string                     `json:"VpcIP"`
+}
+
+// KraudVpcPodOverlayMember defines model for Kraud.VpcPodOverlayMember.
+type KraudVpcPodOverlayMember struct {
+	AID string `json:"AID"`
 }
 
 // KraudVpcPublicNetwork defines model for Kraud.VpcPublicNetwork.
@@ -1724,12 +1763,12 @@ type KraudVpcPublicNetwork struct {
 
 // KraudVpcService defines model for Kraud.VpcService.
 type KraudVpcService struct {
-	ID        string                `json:"ID"`
-	Ip4       string                `json:"IP4"`
-	Ip6       string                `json:"IP6"`
-	Name      string                `json:"Name"`
-	Namespace string                `json:"Namespace"`
-	Ports     []KraudVpcServicePort `json:"Ports"`
+	ID            string                `json:"ID"`
+	Name          string                `json:"Name"`
+	Namespace     string                `json:"Namespace"`
+	OverlayRoutes []string              `json:"OverlayRoutes"`
+	Ports         []KraudVpcServicePort `json:"Ports"`
+	VpcIP         string                `json:"VpcIP"`
 }
 
 // KraudVpcServicePort defines model for Kraud.VpcServicePort.
@@ -4685,8 +4724,9 @@ type K8sLoadBalancerStatusIngressPort struct {
 
 // Namespace
 type K8sNamespace struct {
-	APIVersion string `json:"apiVersion"`
-	Kind       string `json:"kind"`
+	APIVersion string  `json:"apiVersion"`
+	ID         *string `json:"id,omitempty"`
+	Kind       string  `json:"kind"`
 
 	// ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.
 	Metadata IoK8sApimachineryPkgApisMetaV1ObjectMeta `json:"metadata"`
@@ -5179,6 +5219,7 @@ type K8sUserSpec struct {
 	IdpID       *string  `json:"idpId,omitempty"`
 	Roles       []string `json:"roles,omitempty"`
 	Status      *string  `json:"status,omitempty"`
+	UID         *int     `json:"uid,omitempty"`
 }
 
 // Volume represents a named volume in a pod that may be accessed by any container in the pod.
@@ -8955,6 +8996,16 @@ func InspectKraudVolumeJSON200Response(body KraudVolume) *Response {
 // EditKraudVolumeJSON200Response is a constructor method for a EditKraudVolume response.
 // A *Response is returned with the configured status code and content type from the spec.
 func EditKraudVolumeJSON200Response(body KraudVolume) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// ListKraudVpcOverlaysJSON200Response is a constructor method for a ListKraudVpcOverlays response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListKraudVpcOverlaysJSON200Response(body KraudVpcOverlayList) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,

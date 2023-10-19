@@ -8,12 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/mattn/go-tty"
@@ -115,7 +116,6 @@ func (c *Client) SSH(ctx context.Context, tty *tty.TTY, params SSHParams) error 
 		host = host + ":443"
 	}
 
-
 	var conn net.Conn
 
 	if c.baseURL.Scheme == "https" {
@@ -124,15 +124,18 @@ func (c *Client) SSH(ctx context.Context, tty *tty.TTY, params SSHParams) error 
 		if err != nil {
 			return err
 		}
+		conn.(*tls.Conn).NetConn().(*net.TCPConn).SetKeepAlive(true)
+		conn.(*tls.Conn).NetConn().(*net.TCPConn).SetKeepAlivePeriod(time.Second * 2)
 		defer conn.Close()
 	} else {
 		conn, err = net.Dial("tcp", host)
 		if err != nil {
 			return err
 		}
+		conn.(*net.TCPConn).SetKeepAlive(true)
+		conn.(*net.TCPConn).SetKeepAlivePeriod(time.Second * 2)
 		defer conn.Close()
 	}
-
 
 	err = req.Write(conn)
 	if err != nil {

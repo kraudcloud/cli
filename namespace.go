@@ -11,7 +11,7 @@ import (
 func namespacesCMD() *cobra.Command {
 	c := &cobra.Command{
 		Use:     "namespaces",
-		Aliases: []string{"ns"},
+		Aliases: []string{"ns", "namespace"},
 		Short:   "Manage namespaces",
 	}
 
@@ -19,6 +19,7 @@ func namespacesCMD() *cobra.Command {
 		namespacesListCMD(),
 		namespacesDeleteCMD(),
 		namespacesInspectCMD(),
+		namespacesCreateCMD(),
 	)
 
 	return c
@@ -79,7 +80,7 @@ func namespacesDeleteCMD() *cobra.Command {
 func namespacesInspectCMD() *cobra.Command {
 	c := &cobra.Command{
 		Use:     "inspect <namespace>",
-		Aliases: []string{"in"},
+		Aliases: []string{"in", "show"},
 		Short:   "Inspect a namespace",
 		Args:    cobra.ExactArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -93,6 +94,27 @@ func namespacesInspectCMD() *cobra.Command {
 			}
 
 			return identJSONEncoder(cmd.OutOrStdout(), ns)
+		},
+	}
+
+	return c
+}
+
+func namespacesCreateCMD() *cobra.Command {
+	c := &cobra.Command{
+		Use:     "create <namespace>",
+		Aliases: []string{"new", "add", "mk"},
+		Short:   "Create a namespace",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ns, err := API().CreateNamespace(cmd.Context(), args[0])
+			if err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "error creating namespace: %v\n", err)
+				return nil
+			}
+
+			fmt.Fprintf(cmd.OutOrStdout(), "%s\n", *ns.ID)
+			return nil
 		},
 	}
 

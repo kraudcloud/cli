@@ -43,6 +43,7 @@ func main() {
 	root.AddCommand(UpCMD())
 	root.AddCommand(namespacesCMD())
 	root.AddCommand(vpcsCMD())
+	root.AddCommand(vpcOverlaysCMD())
 	root.AddCommand(inflowsCMD())
 
 	root.PersistentFlags().StringVarP(&USER_CONTEXT, "context", "c", "default", "user context")

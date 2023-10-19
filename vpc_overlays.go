@@ -5,23 +5,22 @@ import (
 
 	"github.com/kraudcloud/cli/completions"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
-func vpcsCMD() *cobra.Command {
+func vpcOverlaysCMD() *cobra.Command {
 	c := &cobra.Command{
-		Use:     "vpc",
-		Aliases: []string{"vpcs"},
-		Short:   "manmage vpcs",
+		Use:     "overlays",
+		Aliases: []string{"overlay", "vpc_overlays", "vpc_overlay"},
+		Short:   "manage vpc overlays",
 	}
 
-	c.AddCommand(vpcLs())
-	c.AddCommand(vpcInspect())
+	c.AddCommand(vpcOverlayLs())
+	c.AddCommand(vpcOverlayInspect())
 
 	return c
 }
 
-func vpcLs() *cobra.Command {
+func vpcOverlayLs() *cobra.Command {
 
 	c := &cobra.Command{
 		Use:     "ls",
@@ -29,7 +28,7 @@ func vpcLs() *cobra.Command {
 		Aliases: []string{"list"},
 		Args:    cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			vv, err := API().ListVpcs(cmd.Context())
+			vv, err := API().ListVpcOverlays(cmd.Context())
 			if err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "error listing vpcs: %v\n", err)
 				return
@@ -39,9 +38,9 @@ func vpcLs() *cobra.Command {
 			case "json":
 				identJSONEncoder(cmd.OutOrStdout(), vv)
 			default:
-				table := NewTable("aid", "name")
+				table := NewTable("aid", "namespace", "name", "driver", "net4", "net6")
 				for _, i := range vv.Items {
-					table.AddRow(i.AID, i.Name)
+					table.AddRow(i.AID, i.Namespace, i.Name, i.Driver, i.Net4, i.Net6)
 				}
 				table.Print()
 			}
@@ -51,7 +50,7 @@ func vpcLs() *cobra.Command {
 	return c
 }
 
-func vpcInspect() *cobra.Command {
+func vpcOverlayInspect() *cobra.Command {
 
 	c := &cobra.Command{
 		Use:     "show",
@@ -68,7 +67,7 @@ func vpcInspect() *cobra.Command {
 				q = args[0]
 			}
 
-			vv, err := API().GetVpc(cmd.Context(), q)
+			vv, err := API().GetVpcOverlay(cmd.Context(), q)
 			if err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "error getting vpc: %v\n", err)
 				return
@@ -78,34 +77,8 @@ func vpcInspect() *cobra.Command {
 			case "json":
 				identJSONEncoder(cmd.OutOrStdout(), vv)
 			default:
+				identJSONEncoder(cmd.OutOrStdout(), vv)
 
-				fmt.Println()
-				fmt.Println("public networks:")
-				table := NewTable("id", "segment", "net")
-				for _, i := range vv.PublicNetworks {
-					table.AddRow(i.ID, i.Segment, i.Net)
-				}
-				table.Print()
-
-				fmt.Println()
-				fmt.Println("pods:")
-				table = NewTable("id", "vpc", "overlay", "name")
-				for _, i := range vv.Pods {
-					overlays := []string{}
-					for _, o := range i.Overlays {
-						overlays = append(overlays, o.AID)
-					}
-					table.AddRow(i.ID, i.VpcIP, strings.Join(overlays, ","), i.Name+"."+i.Namespace)
-				}
-				table.Print()
-
-				fmt.Println()
-				fmt.Println("services:")
-				table = NewTable("id", "vpc", "overlay", "name")
-				for _, i := range vv.Services {
-					table.AddRow(i.ID, i.VpcIP, strings.Join(i.OverlayRoutes, ","), i.Name+"."+i.Namespace)
-				}
-				table.Print()
 			}
 		},
 	}

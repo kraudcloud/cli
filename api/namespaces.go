@@ -1,7 +1,9 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"path"
@@ -77,6 +79,38 @@ func (c *Client) NamespaceOverview(ctx context.Context, namespace string) (KrNam
 	err = c.Do(req, &response)
 	if err != nil {
 		return KrNamespaceOverview{}, err
+	}
+
+	return response, nil
+}
+
+func (c *Client) CreateNamespace(ctx context.Context, name string) (*K8sNamespace, error) {
+
+	body, err := json.Marshal(&K8sNamespace{
+		Metadata: IoK8sApimachineryPkgApisMetaV1ObjectMeta{
+			Name: &name,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		"/api/v1/namespaces",
+		bytes.NewReader(body),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var response = &K8sNamespace{}
+
+	err = c.Do(req, &response)
+	if err != nil {
+		return nil, err
 	}
 
 	return response, nil

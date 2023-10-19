@@ -2181,6 +2181,10 @@ components:
                     type: string
                 Namespace:
                     type: string
+                Overlays:
+                    items:
+                        $ref: '#/components/schemas/Kraud.PodOverlaySpec'
+                    type: array
                 Replicas:
                     type: integer
                 Res:
@@ -2206,6 +2210,7 @@ components:
                 - Containers
                 - Volumes
                 - Replicas
+                - Overlays
             type: object
         Kraud.PodList:
             properties:
@@ -2215,6 +2220,19 @@ components:
                     type: array
             required:
                 - items
+            type: object
+        Kraud.PodOverlaySpec:
+            properties:
+                AID:
+                    type: string
+                IP4:
+                    type: string
+                IP6:
+                    type: string
+            required:
+                - AID
+                - IP4
+                - IP6
             type: object
         Kraud.PodStatus:
             properties:
@@ -2323,6 +2341,10 @@ components:
                     type: string
                 Name:
                     type: string
+                Pods:
+                    items:
+                        $ref: '#/components/schemas/Kraud.VpcPod'
+                    type: array
                 PublicNetworks:
                     items:
                         $ref: '#/components/schemas/Kraud.VpcPublicNetwork'
@@ -2336,6 +2358,7 @@ components:
                 - Name
                 - PublicNetworks
                 - Services
+                - Pods
             type: object
         Kraud.VpcList:
             properties:
@@ -2345,6 +2368,68 @@ components:
                     type: array
             required:
                 - items
+            type: object
+        Kraud.VpcOverlay:
+            properties:
+                AID:
+                    type: string
+                Driver:
+                    type: string
+                ID:
+                    type: string
+                Name:
+                    type: string
+                Namespace:
+                    type: string
+                Net4:
+                    type: string
+                Net6:
+                    type: string
+            required:
+                - ID
+                - AID
+                - Name
+                - Namespace
+                - Driver
+                - Net4
+                - Net6
+            type: object
+        Kraud.VpcOverlayList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/Kraud.VpcOverlay'
+                    type: array
+            required:
+                - items
+            type: object
+        Kraud.VpcPod:
+            properties:
+                ID:
+                    type: string
+                Name:
+                    type: string
+                Namespace:
+                    type: string
+                Overlays:
+                    items:
+                        $ref: '#/components/schemas/Kraud.VpcPodOverlayMember'
+                    type: array
+                VpcIP:
+                    type: string
+            required:
+                - ID
+                - Name
+                - Namespace
+                - VpcIP
+                - Overlays
+            type: object
+        Kraud.VpcPodOverlayMember:
+            properties:
+                AID:
+                    type: string
+            required:
+                - AID
             type: object
         Kraud.VpcPublicNetwork:
             properties:
@@ -2363,25 +2448,27 @@ components:
             properties:
                 ID:
                     type: string
-                IP4:
-                    type: string
-                IP6:
-                    type: string
                 Name:
                     type: string
                 Namespace:
                     type: string
+                OverlayRoutes:
+                    items:
+                        type: string
+                    type: array
                 Ports:
                     items:
                         $ref: '#/components/schemas/Kraud.VpcServicePort'
                     type: array
+                VpcIP:
+                    type: string
             required:
                 - ID
                 - Name
                 - Namespace
-                - IP4
-                - IP6
                 - Ports
+                - VpcIP
+                - OverlayRoutes
             type: object
         Kraud.VpcServicePort:
             properties:
@@ -7890,6 +7977,8 @@ components:
             properties:
                 apiVersion:
                     type: string
+                id:
+                    type: string
                 kind:
                     type: string
                 metadata:
@@ -8685,6 +8774,8 @@ components:
                     type: array
                 status:
                     type: string
+                uid:
+                    type: integer
             required:
                 - displayName
                 - email
@@ -11623,6 +11714,16 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Kraud.Volume'
+                    description: OK
+    /apis/kraudcloud.com/v1/vpc_overlays:
+        get:
+            operationId: listKraudVpcOverlays
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.VpcOverlayList'
                     description: OK
     /apis/kraudcloud.com/v1/vpcs:
         get:
