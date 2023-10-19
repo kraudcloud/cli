@@ -17,10 +17,19 @@ func volumesCMD() *cobra.Command {
 	c := &cobra.Command{
 		Use:     "volume",
 		Aliases: []string{"vol"},
-		Short:   "manmage volumes",
+		Args:    cobra.ExactArgs(0),
+		Short:   "manage volumes",
+		Run:     runVolumeLs,
 	}
 
-	c.AddCommand(volumeLs())
+	c.AddCommand(&cobra.Command{
+		Use:     "ls",
+		Short:   "List volumes",
+		Aliases: []string{"list"},
+		Args:    cobra.ExactArgs(0),
+		Run:     runVolumeLs,
+	})
+
 	c.AddCommand(volumeRm())
 	c.AddCommand(volumeCreate())
 	c.AddCommand(volumeCopy())
@@ -28,38 +37,27 @@ func volumesCMD() *cobra.Command {
 	return c
 }
 
-func volumeLs() *cobra.Command {
-
-	c := &cobra.Command{
-		Use:     "ls",
-		Short:   "List volumes",
-		Aliases: []string{"list"},
-		Args:    cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
-			vv, err := API().ListVolumes(cmd.Context())
-			if err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "error listing volumes: %v\n", err)
-				return
-			}
-
-			switch OUTPUT_FORMAT {
-			case "json":
-				identJSONEncoder(cmd.OutOrStdout(), vv)
-			default:
-				table := NewTable("aid", "name", "class", "zone", "size")
-				for _, i := range vv.Items {
-					zone := ""
-					if i.Zone != nil {
-						zone = *i.Zone
-					}
-					table.AddRow(i.AID, i.Name, i.Class, zone, humanize.Bytes(uint64(i.Size)))
-				}
-				table.Print()
-			}
-		},
+func runVolumeLs(cmd *cobra.Command, args []string) {
+	vv, err := API().ListVolumes(cmd.Context())
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "error listing volumes: %v\n", err)
+		return
 	}
 
-	return c
+	switch OUTPUT_FORMAT {
+	case "json":
+		identJSONEncoder(cmd.OutOrStdout(), vv)
+	default:
+		table := NewTable("aid", "name", "class", "zone", "size")
+		for _, i := range vv.Items {
+			zone := ""
+			if i.Zone != nil {
+				zone = *i.Zone
+			}
+			table.AddRow(i.AID, i.Name, i.Class, zone, humanize.Bytes(uint64(i.Size)))
+		}
+		table.Print()
+	}
 }
 
 func volumeRm() *cobra.Command {

@@ -2096,6 +2096,8 @@ components:
                     type: string
                 ID:
                     type: string
+                IngressDomain:
+                    type: string
                 Kind:
                     type: string
                 VpcID:
@@ -2107,6 +2109,7 @@ components:
                 - Kind
                 - VpcID
                 - VpcName
+                - IngressDomain
                 - DisplayPublic
                 - DisplayTarget
             type: object
@@ -2115,6 +2118,25 @@ components:
                 items:
                     items:
                         $ref: '#/components/schemas/Kraud.Inflow'
+                    type: array
+            required:
+                - items
+            type: object
+        Kraud.Ingress:
+            properties:
+                ID:
+                    type: string
+                IngressDomain:
+                    type: string
+            required:
+                - ID
+                - IngressDomain
+            type: object
+        Kraud.IngressList:
+            properties:
+                items:
+                    items:
+                        $ref: '#/components/schemas/Kraud.Ingress'
                     type: array
             required:
                 - items
@@ -11196,6 +11218,16 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Kraud.InflowList'
+                    description: OK
+    /apis/kraudcloud.com/v1/ingresses:
+        get:
+            operationId: listKraudIngresses
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Kraud.IngressList'
                     description: OK
     /apis/kraudcloud.com/v1/launch:
         post:

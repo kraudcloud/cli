@@ -13,42 +13,38 @@ func vpcsCMD() *cobra.Command {
 		Use:     "vpc",
 		Aliases: []string{"vpcs"},
 		Short:   "manmage vpcs",
+		Run:     vpcsLsRun,
 	}
 
-	c.AddCommand(vpcLs())
+	c.AddCommand(&cobra.Command{
+		Use:     "ls",
+		Short:   "List vpcs",
+		Aliases: []string{"list"},
+		Args:    cobra.ExactArgs(0),
+		Run:     vpcsLsRun,
+	})
 	c.AddCommand(vpcInspect())
 
 	return c
 }
 
-func vpcLs() *cobra.Command {
-
-	c := &cobra.Command{
-		Use:     "ls",
-		Short:   "List vpcs",
-		Aliases: []string{"list"},
-		Args:    cobra.ExactArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
-			vv, err := API().ListVpcs(cmd.Context())
-			if err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "error listing vpcs: %v\n", err)
-				return
-			}
-
-			switch OUTPUT_FORMAT {
-			case "json":
-				identJSONEncoder(cmd.OutOrStdout(), vv)
-			default:
-				table := NewTable("aid", "name")
-				for _, i := range vv.Items {
-					table.AddRow(i.AID, i.Name)
-				}
-				table.Print()
-			}
-		},
+func vpcsLsRun(cmd *cobra.Command, args []string) {
+	vv, err := API().ListVpcs(cmd.Context())
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "error listing vpcs: %v\n", err)
+		return
 	}
 
-	return c
+	switch OUTPUT_FORMAT {
+	case "json":
+		identJSONEncoder(cmd.OutOrStdout(), vv)
+	default:
+		table := NewTable("aid", "name")
+		for _, i := range vv.Items {
+			table.AddRow(i.AID, i.Name)
+		}
+		table.Print()
+	}
 }
 
 func vpcInspect() *cobra.Command {

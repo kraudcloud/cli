@@ -48,4 +48,3 @@ func (c *Client) GetVpcOverlay(ctx context.Context, q string) (*KraudVpcOverlay,
 
 	return response, nil
 }
-

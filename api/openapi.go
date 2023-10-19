@@ -1590,6 +1590,7 @@ type KraudInflow struct {
 	DisplayPublic string `json:"DisplayPublic"`
 	DisplayTarget string `json:"DisplayTarget"`
 	ID            string `json:"ID"`
+	IngressDomain string `json:"IngressDomain"`
 	Kind          string `json:"Kind"`
 	VpcID         string `json:"VpcID"`
 	VpcName       string `json:"VpcName"`
@@ -1598,6 +1599,17 @@ type KraudInflow struct {
 // KraudInflowList defines model for Kraud.InflowList.
 type KraudInflowList struct {
 	Items []KraudInflow `json:"items"`
+}
+
+// KraudIngress defines model for Kraud.Ingress.
+type KraudIngress struct {
+	ID            string `json:"ID"`
+	IngressDomain string `json:"IngressDomain"`
+}
+
+// KraudIngressList defines model for Kraud.IngressList.
+type KraudIngressList struct {
+	Items []KraudIngress `json:"items"`
 }
 
 // Layer is a docker image layer
@@ -8836,6 +8848,16 @@ func InspectImageJSON200Response(body KraudImageName) *Response {
 // ListKraudInflowsJSON200Response is a constructor method for a ListKraudInflows response.
 // A *Response is returned with the configured status code and content type from the spec.
 func ListKraudInflowsJSON200Response(body KraudInflowList) *Response {
+	return &Response{
+		body:        body,
+		Code:        200,
+		contentType: "application/json",
+	}
+}
+
+// ListKraudIngressesJSON200Response is a constructor method for a ListKraudIngresses response.
+// A *Response is returned with the configured status code and content type from the spec.
+func ListKraudIngressesJSON200Response(body KraudIngressList) *Response {
 	return &Response{
 		body:        body,
 		Code:        200,
