@@ -80,9 +80,10 @@ func imagesLs() *cobra.Command {
 }
 
 type extractedFileInfo struct {
-	hash     string
-	tempfile string
-	size     int64
+	hash           string
+	tempfile       string
+	zippedtempfile string
+	size           int64
 }
 
 func imageExtractFromDocker(ctx context.Context, serviceName string, ref string) (map[string]*extractedFileInfo, error) {
@@ -157,6 +158,75 @@ func imageExtractFromDocker(ctx context.Context, serviceName string, ref string)
 	return tmpfiles, nil
 }
 
+func zipLayers(serviceName string, r map[string]*extractedFileInfo) error {
+	total := int64(0)
+	for _, v := range r {
+		total += v.size
+	}
+
+	var bar *progressbar.ProgressBar
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		bar = NewBar(int(total), "[cyan]"+serviceName+"[reset] Compressing layers ")
+		defer bar.Finish()
+	} else {
+		colorstring.Fprintln(ansi.NewAnsiStderr(), "[cyan]"+serviceName+"[reset] Compressing layers")
+	}
+
+	var wg sync.WaitGroup
+
+	for _, v := range r {
+
+		wg.Add(1)
+
+		go func(v *extractedFileInfo) {
+
+			defer wg.Done()
+
+			layertar, err := os.Open(v.tempfile)
+			if err != nil {
+				panic(err)
+			}
+			defer layertar.Close()
+
+			var reader io.Reader = layertar
+			if bar != nil {
+				reader = io.TeeReader(reader, bar)
+			}
+
+			zipped, err := os.Create(v.tempfile + ".gz")
+			if err != nil {
+				panic(err)
+			}
+
+			gz := gzip.NewWriter(zipped)
+			defer gz.Close()
+
+			_, err = io.Copy(gz, reader)
+			if err != nil {
+				panic(err)
+			}
+
+			err = gz.Close()
+			if err != nil {
+				panic(err)
+			}
+
+			err = zipped.Close()
+			if err != nil {
+				panic(err)
+			}
+
+			v.zippedtempfile = zipped.Name()
+		}(v)
+
+	}
+
+	wg.Wait()
+
+	return nil
+
+}
+
 func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 
 	total := int64(0)
@@ -182,7 +252,7 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 
 			defer wg.Done()
 
-			layertargz, err := os.Open(v.tempfile)
+			layertargz, err := os.Open(v.zippedtempfile)
 			if err != nil {
 				panic(err)
 			}
@@ -193,21 +263,15 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 				reader = io.TeeReader(reader, bar)
 			}
 
-			hasher := sha256.New()
+			stat, err := layertargz.Stat()
+			if err != nil {
+				panic(err)
+			}
 
-			pr, pw := io.Pipe()
-
-			go func() {
-				defer pw.Close()
-				zipper := gzip.NewWriter(io.MultiWriter(pw, hasher))
-				defer zipper.Close()
-				io.Copy(zipper, reader)
-			}()
-
-			pushedlayer, err := API().PushLayer(context.Background(),
+			_, err = API().PushLayer(context.Background(),
 				"sha256:"+v.hash,
-				pr,
-				uint64(v.size),
+				reader,
+				uint64(stat.Size()),
 			)
 			if err != nil {
 
@@ -217,11 +281,6 @@ func uploadLayers(serviceName string, r map[string]*extractedFileInfo) error {
 
 				fmt.Println()
 				panic(err)
-			}
-
-			if pushedlayer.Sha256 != fmt.Sprintf("%x", hasher.Sum(nil)) {
-				// this also happens when we close early because the remove already has the layer
-				// panic("sha256 mismatch after upload")
 			}
 
 		}(v)
@@ -311,6 +370,7 @@ func imagePushCMD() *cobra.Command {
 				defer func() {
 					for _, t := range files {
 						os.Remove(t.tempfile)
+						os.Remove(t.zippedtempfile)
 					}
 				}()
 
@@ -364,6 +424,11 @@ func imagePushCMD() *cobra.Command {
 							panic(fmt.Sprintf("layer missing %s", l))
 						}
 					}
+				}
+
+				err = zipLayers(serviceName, layers)
+				if err != nil {
+					panic(err)
 				}
 
 				err = uploadLayers(serviceName, layers)
