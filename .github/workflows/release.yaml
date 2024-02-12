@@ -14,9 +14,8 @@ jobs:
           - goarch: arm64
             goos: windows
     steps:
-    - uses: actions/checkout@v3
-    - name: Get tags
-      run: git fetch --tags origin
+    - uses: actions/checkout@v4
+    - run: git fetch --tags --force
     - uses: wangyoucao577/go-release-action@v1
       with:
         pre_command: export CGO_ENABLED=0
@@ -25,4 +24,5 @@ jobs:
         goarch: ${{ matrix.goarch }}
         binary_name: kra
         asset_name: kra-${{ matrix.goos }}-${{ matrix.goarch }}
+        ldflags: "-X 'github.com/kraudcloud/cli/api.Version=${{github.ref_name}}'"
         #extra_files: LICENSE README.md

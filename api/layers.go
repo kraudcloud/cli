@@ -39,8 +39,7 @@ func (c *Client) PushLayer(ctx context.Context, oid string, b io.Reader, size ui
 	)
 
 	req.Header.Set("Content-Type", "application/x-tar")
-	req.Header.Set("Content-Length", fmt.Sprintf("%d", size))
-	req.Header.Set("Expect", "100-continue")
+	req.ContentLength = int64(size)
 
 	if err != nil {
 		return nil, err
